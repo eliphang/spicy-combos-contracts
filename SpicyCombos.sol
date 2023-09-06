@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 pragma solidity ^0.8.7;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts@4.9.3/access/Ownable.sol";
 import "./Heap.sol";
 
 /// @custom:repo https://github.com/eliphang/spicy-combos-contracts
@@ -19,7 +19,7 @@ contract SpicyCombos is Ownable {
     struct Helping {
         address owner;
         HelpingType helpingType;
-        bool credit; // Is this using a credit or a deposit?
+        bool usingCredit; // Is this using a credit or a deposit?
     }
 
     struct Balance {
@@ -27,31 +27,69 @@ contract SpicyCombos is Ownable {
         uint256 credits;
     }
 
-    uint256 devFund = 0;
+    uint256 public totalDeposits = 0;
 
-    uint256 immutable minValue;
+    /// The minimum cost of a helping. All combo costs will be a multiple of this.
+    uint256 public immutable minValue;
 
     mapping(uint256 => Queue) queues; // The keys are comboIds
-    mapping(address => Balance) balances;
+    mapping(address => Balance) public balances;
 
     error ValueOutOfRange(
         string parameter,
         uint256 allowedMinimum,
         uint256 allowedMaximum
     );
+    error NotEnoughCredits(uint256 credits, uint256 comboPrice);
+    error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
+    error NotEnoughDepositsForPremium(uint256 deposits, uint256 premium);
 
     /// @param minValue_ the minimum value that can be deposited.
     constructor(uint256 minValue_) {
         minValue = minValue_;
     }
 
+    modifier comboValuesInRange(
+        uint256 amountDigit1,
+        uint256 amountDigit2,
+        uint256 amountZeros,
+        uint256 blocksDigit1,
+        uint256 blocksDigit2,
+        uint256 blocksZeros
+    ) {
+        if (amountDigit1 == 0 || amountDigit1 > 9) {
+            revert ValueOutOfRange("amountDigit1", 1, 9);
+        }
+        if (amountDigit2 > 9) {
+            revert ValueOutOfRange("amountDigit2", 0, 9);
+        }
+        if (amountZeros > 9) {
+            revert ValueOutOfRange("amountZeros", 0, 9);
+        }
+        if (blocksDigit1 == 0 || blocksDigit1 > 9) {
+            revert ValueOutOfRange("blocksDigit1", 1, 9);
+        }
+        if (blocksDigit2 > 9) {
+            revert ValueOutOfRange("blocksDigit2", 0, 9);
+        }
+        if (blocksZeros > 6) {
+            revert ValueOutOfRange("blocksZeros", 0, 6);
+        }
+        _;
+    }
+
     /// Withdraw all funds set aside for the dev fund.
     /// @dev The contract "owner" is considered the destination address of the dev fund.
     /// @dev The owner has no other privilege than to receive the amount set aside in the dev fund.
     function withdrawDevFund() external {
-        uint256 amount = devFund;
-        devFund = 0; // don't allow the devFund to use reentrancy to withdraw more than its share
-        owner().call{value: amount}(""); // the devFund might be a smart contract, so forward all gas
+        uint256 balance = address(this).balance;
+        uint256 devFund = balance - totalDeposits;
+        uint256 tempDeposits = totalDeposits;
+        // Temporarily set `totalDeposits` to the entire smart contract balance to disallow the devFund to use reentrancy to withdraw more than its share.
+        totalDeposits = balance;
+        owner().call{value: devFund}(""); // the devFund might be a smart contract, so forward all gas
+        // Set `totalDeposits` back to what it was.
+        totalDeposits = tempDeposits;
     }
 
     /// Get a helping. The first six parameters uniquely define a spicy combo.
@@ -71,28 +109,37 @@ contract SpicyCombos is Ownable {
         uint256 blocksDigit2,
         uint256 blocksZeros,
         bool doubleHelping,
+        bool useCredits,
         uint256 premium
-    ) external payable {
-        if (amountDigit1 == 0 || amountDigit1 > 9) {
-            revert ValueOutOfRange("amountDigit1", 1, 9);
-        }
-        if (amountDigit2 > 9) {
-            revert ValueOutOfRange("amountDigit2", 0, 9);
-        }
-        if (amountZeros > 9) {
-            revert ValueOutOfRange("amountZeros", 0, 9);
-        }
-        if (blocksDigit1 == 0 || blocksDigit1 > 9) {
-            revert ValueOutOfRange("blocksDigit1", 1, 9);
-        }
-        if (blocksDigit2 > 9) {
-            revert ValueOutOfRange("blocksDigit2", 0, 9);
-        }
-        if (blocksZeros > 6) {
-            revert ValueOutOfRange("blocksZeros", 0, 6);
+    )
+        external
+        payable
+        comboValuesInRange(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        )
+    {
+        HelpingType helpingType;
+        if (doubleHelping) {
+            helpingType = HelpingType.DoubleHelping;
+        } else {
+            helpingType = HelpingType.TimedHelping;
         }
 
-        balances[msg.sender].deposits += msg.value;
+        Balance storage balance = balances[msg.sender];
+        balance.deposits += msg.value;
+
+        if (balance.deposits < premium) {
+            revert NotEnoughDepositsForPremium(balance.deposits, premium);
+        }
+
+        unchecked {
+            balance.deposits -= premium; // premiums go to the dev fund
+        }
 
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -102,11 +149,61 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
+        uint256 comboPrice = computeValue(
+            amountDigit1,
+            amountDigit2,
+            amountZeros
+        );
+
+        if (useCredits) {
+            if (balance.credits < comboPrice) {
+                revert NotEnoughCredits(balance.credits, comboPrice);
+            }
+            balance.credits -= comboPrice;
+        } else {
+            // use deposits
+            if (balance.deposits < comboPrice) {
+                revert NotEnoughDeposits(balance.deposits, comboPrice);
+            }
+            balance.deposits -= comboPrice;
+            transferRewardToFirstInQueue(comboId);
+        }
+        updateQueue(comboId, helpingType, useCredits, premium);
     }
 
     function deposit() external payable {}
 
     function withdraw() external {}
+
+    /// Get a queue's size and max value from the six values uniquely identifying a combo.
+    function queueSizeAndMaxValue(
+        uint256 amountDigit1,
+        uint256 amountDigit2,
+        uint256 amountZeros,
+        uint256 blocksDigit1,
+        uint256 blocksDigit2,
+        uint256 blocksZeros
+    )
+        external
+        view
+        comboValuesInRange(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        )
+    {
+        uint256 comboId = computeComboId(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        );
+    }
 
     function computeComboId(
         uint256 amountDigit1,
@@ -141,4 +238,13 @@ contract SpicyCombos is Ownable {
         }
         return (digit1 * 10 + digit2) * 10**zeros;
     }
+
+    function transferRewardToFirstInQueue(uint256 comboId) internal {}
+
+    function updateQueue(
+        uint256 comboId,
+        HelpingType helpingType,
+        bool useCredits,
+        uint256 premium
+    ) internal {}
 }
