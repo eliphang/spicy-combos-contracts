@@ -181,8 +181,8 @@ contract SpicyCombos is Ownable {
 
     function withdraw() external {}
 
-    /// Get a queue's size and max value from the six values uniquely identifying a combo.
-    function queueSizeAndMaxValue(
+    /// Get a queue's size and max premium from the six values uniquely identifying a combo.
+    function queueSizeAndMaxPremium(
         uint256 amountDigit1,
         uint256 amountDigit2,
         uint256 amountZeros,
