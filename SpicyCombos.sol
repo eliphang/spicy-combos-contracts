@@ -20,6 +20,8 @@ contract SpicyCombos is Ownable {
         address owner;
         HelpingType helpingType;
         bool usingCredit; // Is this using a credit or a deposit?
+        uint startBlock;
+        uint depositsWhileActive;
     }
 
     struct Balance {
@@ -170,8 +172,11 @@ contract SpicyCombos is Ownable {
 
     function removeHelping() external {}
 
-    /// Get a queue's size and max premium from the six values uniquely identifying a combo.
-    function queueSizeAndMaxPremium(
+    /// Get a queue's size, premium, and active address from the six values uniquely identifying a combo.
+    /// @return size the size of the queue
+    /// @return premium the premium that must be exceeded to take the active spot in this queue
+    /// @return activeHelpingOwner the address of the owner of the active helping
+    function queueInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
         uint256 amountZeros,
@@ -182,6 +187,7 @@ contract SpicyCombos is Ownable {
         external
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
+        returns(uint size, uint premium, address activeHelpingOwner)
     {
         uint256 comboId = computeComboId(
             amountDigit1,
