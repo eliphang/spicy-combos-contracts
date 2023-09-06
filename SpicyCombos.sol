@@ -44,11 +44,6 @@ contract SpicyCombos is Ownable {
     error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
     error NotEnoughDepositsForPremium(uint256 deposits, uint256 premium);
 
-    /// @param minValue_ the minimum value that can be deposited.
-    constructor(uint256 minValue_) {
-        minValue = minValue_;
-    }
-
     modifier comboValuesInRange(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -76,6 +71,15 @@ contract SpicyCombos is Ownable {
             revert ValueOutOfRange("blocksZeros", 0, 6);
         }
         _;
+    }
+
+    /// @param minValue_ the minimum value that can be deposited.
+    constructor(uint256 minValue_) {
+        minValue = minValue_;
+    }
+
+    receive() external payable {
+        balances[msg.sender].deposits += msg.value;
     }
 
     /// Withdraw all funds set aside for the dev fund.
@@ -171,7 +175,9 @@ contract SpicyCombos is Ownable {
         updateQueue(comboId, helpingType, useCredits, premium);
     }
 
-    function deposit() external payable {}
+    function deposit() external payable {
+        balances[msg.sender].deposits += msg.value;
+    }
 
     function withdraw() external {}
 
