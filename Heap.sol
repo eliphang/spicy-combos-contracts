@@ -6,11 +6,11 @@ pragma solidity ^0.8.7;
 
 struct HeapData {
     HeapNode[] nodes; // root is index 1; index 0 not used
-    mapping(uint256 => uint256) heapIdToNodeIndex;
+    mapping(address => uint256) addrToNodeIndex;
 }
 
 struct HeapNode {
-    uint256 heapId;
+    address addr;
     uint256 priority;
 }
 
@@ -21,7 +21,7 @@ library Heap {
         if (self.nodes.length == 0) {
             self.nodes.push(node);
         } else {
-            self.nodes.push(HeapNode(0, 0)); // Create a new spot in the heap.
+            self.nodes.push(HeapNode(address(0), 0)); // Create a new spot in the heap.
             _siftUp(self, node, self.nodes.length - 1); // Sift up the new node, also filling in the new spot.
         }
     }
@@ -33,11 +33,11 @@ library Heap {
     }
 
     function removeHeapNode(HeapData storage self, HeapNode memory node) internal {
-        uint256 nodeIndex = self.heapIdToNodeIndex[node.heapId];
+        uint256 nodeIndex = self.addrToNodeIndex[node.addr];
         uint256 lastIndex = self.nodes.length - 1;
         HeapNode memory lastHeapNode = self.nodes[lastIndex];
 
-        delete self.heapIdToNodeIndex[node.heapId]; // Delete the mapping from heapId to HeapNode Index.
+        delete self.addrToNodeIndex[node.addr]; // Delete the mapping from addr to HeapNode Index.
         delete self.nodes[nodeIndex]; // Delete the HeapNode struct for the removed node.
         self.nodes.pop(); // Reduce the heap size by one.
 
@@ -52,12 +52,12 @@ library Heap {
         return self.nodes;
     }
 
-    function getByHeapId(HeapData storage self, uint256 heapId)
+    function getByHeapId(HeapData storage self, address addr)
         internal
         view
         returns (HeapNode storage)
     {
-        return self.nodes[self.heapIdToNodeIndex[heapId]];
+        return self.nodes[self.addrToNodeIndex[addr]];
     }
 
     function getMax(HeapData storage self) internal view returns (HeapNode storage) {
@@ -117,6 +117,6 @@ library Heap {
         uint256 nodeIndex
     ) private {
         self.nodes[nodeIndex] = node;
-        self.heapIdToNodeIndex[node.heapId] = nodeIndex;
+        self.addrToNodeIndex[node.addr] = nodeIndex;
     }
 }

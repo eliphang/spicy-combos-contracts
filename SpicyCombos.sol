@@ -17,9 +17,9 @@ contract SpicyCombos is Ownable {
     }
 
     struct Helping {
-        uint256 queueId;
+        address owner;
         HelpingType helpingType;
-        bool credit; // Is this a credit or a deposit?
+        bool credit; // Is this using a credit or a deposit?
     }
 
     struct Balance {
