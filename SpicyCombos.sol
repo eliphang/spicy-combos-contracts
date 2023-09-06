@@ -35,11 +35,7 @@ contract SpicyCombos is Ownable {
     mapping(uint256 => Queue) queues; // The keys are comboIds
     mapping(address => Balance) public balances;
 
-    error ValueOutOfRange(
-        string parameter,
-        uint256 allowedMinimum,
-        uint256 allowedMaximum
-    );
+    error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughCredits(uint256 credits, uint256 comboPrice);
     error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
     error NotEnoughDepositsForPremium(uint256 deposits, uint256 premium);
@@ -118,14 +114,7 @@ contract SpicyCombos is Ownable {
     )
         external
         payable
-        comboValuesInRange(
-            amountDigit1,
-            amountDigit2,
-            amountZeros,
-            blocksDigit1,
-            blocksDigit2,
-            blocksZeros
-        )
+        comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
         HelpingType helpingType;
         if (doubleHelping) {
@@ -153,11 +142,7 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(
-            amountDigit1,
-            amountDigit2,
-            amountZeros
-        );
+        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
 
         if (useCredits) {
             if (balance.credits < comboPrice) {
@@ -179,7 +164,11 @@ contract SpicyCombos is Ownable {
         balances[msg.sender].deposits += msg.value;
     }
 
+    function increasePremium() external payable {}
+
     function withdraw() external {}
+
+    function removeHelping() external {}
 
     /// Get a queue's size and max premium from the six values uniquely identifying a combo.
     function queueSizeAndMaxPremium(
@@ -192,14 +181,7 @@ contract SpicyCombos is Ownable {
     )
         external
         view
-        comboValuesInRange(
-            amountDigit1,
-            amountDigit2,
-            amountZeros,
-            blocksDigit1,
-            blocksDigit2,
-            blocksZeros
-        )
+        comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
         uint256 comboId = computeComboId(
             amountDigit1,
