@@ -99,7 +99,7 @@ contract SpicyCombos is Ownable {
         totalDeposits = tempDeposits;
     }
 
-    /// Get a helping. The first six parameters uniquely define a spicy combo.
+    /// Add a helping to a combo. The first six parameters uniquely define a combo.
     /// @param amountDigit1 first significant digit in the amount.
     /// @param amountDigit2 second significant digit in the amount (or zero if there is only one significant digit).
     /// @param amountZeros number of zeros to add to the minimum value for amount.
@@ -108,8 +108,8 @@ contract SpicyCombos is Ownable {
     /// @param blocksZeros number of zeros to add to the number of blocks.
     /// @param doubleHelping Is this a double helping? If not, it's a timed helping.
     /// @param useCredits Use credits instead of deposits for the base combo price (not including premium).
-    /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
     /// @param firstOnly Use this if you want to have a first place bonus and fail (revert) if you don't get it.
+    /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
     function addHelping(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -126,6 +126,8 @@ contract SpicyCombos is Ownable {
         payable
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
+        // Update caller's balance.
+
         Balance storage balance = balances[msg.sender];
         // Make sure addHelping() never calls an outside function or there could be a reentrancy attack.
         balance.deposits += msg.value;
@@ -170,7 +172,8 @@ contract SpicyCombos is Ownable {
             totalDeposits += comboPrice;
         }
 
-        // Update Queue
+        // Update queue.
+
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
         removeActiveHelpingIfExpired(queue, timeLimit);
 
@@ -186,7 +189,7 @@ contract SpicyCombos is Ownable {
 
         if (queue.activeHelping.exists) {
             if (firstOnly) revert FirstOnlyUnsuccessful();
-            transferRewardToActiveHelping(queue);
+            ++queue.activeHelping.depositsReceived;
             removeActiveHelpingIfExpired(queue, timeLimit); // Transferring the reward may have caused an active double helping to expire.
         } else {
             // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
@@ -252,7 +255,7 @@ contract SpicyCombos is Ownable {
     /// Get a queue's size, premium, and active address for the combo uniquely identified by the amount and blocks.
     /// @return size the size of the queue
     /// @return premium the premium that must be exceeded to take the active spot in this queue
-    /// @return activeHelpingOwner the address of the owner of the active helping
+    /// @return activeOwner the address of the owner of the active helping
     function queueInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -267,7 +270,7 @@ contract SpicyCombos is Ownable {
         returns (
             uint256 size,
             uint256 premium,
-            address activeHelpingOwner
+            address activeOwner
         )
     {
         uint256 comboId = computeComboId(
@@ -315,18 +318,12 @@ contract SpicyCombos is Ownable {
     }
 
     function removeActiveHelpingIfExpired(Queue storage queue, uint256 timeLimit) internal {
-        // Check the active helping to see if it's expired
-        Helping storage activeHelping = queue.activeHelping;
-        bool expired;
-        if (activeHelping.helpingType == HelpingType.DoubleHelping && activeHelping.depositsReceived >= 2) {
-            expired = true;
-        } else if (
-            activeHelping.helpingType == HelpingType.TimedHelping && activeHelping.startBlock + timeLimit > block.number
+        Helping storage active = queue.activeHelping;
+        if (
+            (active.helpingType == HelpingType.DoubleHelping && active.depositsReceived >= 2) ||
+            (active.helpingType == HelpingType.TimedHelping && active.startBlock + timeLimit > block.number)
         ) {
-            expired = true;
-        }
-        if (expired) {
-            delete queue.helpings[activeHelping.owner];
+            delete queue.helpings[active.owner];
             HeapData storage heap = queue.heapData;
             if (Heap.size(heap) != 0) {
                 HeapNode memory next = Heap.removeFirst(queue.heapData);
@@ -335,6 +332,4 @@ contract SpicyCombos is Ownable {
             }
         }
     }
-
-    function transferRewardToActiveHelping(Queue storage queue) internal {}
 }
