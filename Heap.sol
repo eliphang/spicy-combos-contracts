@@ -27,7 +27,7 @@ library Heap {
     }
 
     /// Remove and return the node with the highest priority
-    function removeMax(HeapData storage self) internal returns (HeapNode memory node) {
+    function removeFirst(HeapData storage self) internal returns (HeapNode memory node) {
         node = self.nodes[ROOT_INDEX];
         removeHeapNode(self, node);
     }
@@ -60,7 +60,7 @@ library Heap {
         return self.nodes[self.addrToNodeIndex[addr]];
     }
 
-    function getMax(HeapData storage self) internal view returns (HeapNode storage) {
+    function getFirst(HeapData storage self) internal view returns (HeapNode storage) {
         return self.nodes[ROOT_INDEX];
     }
 

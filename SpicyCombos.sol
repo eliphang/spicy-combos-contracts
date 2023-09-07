@@ -12,15 +12,17 @@ contract SpicyCombos is Ownable {
     }
 
     struct Queue {
-        HeapData heapData;
+        HeapData heapData; // contains all helpings after the active one
         mapping(address => Helping) helpings;
+        Helping activeHelping;
     }
 
     struct Helping {
         address owner;
         HelpingType helpingType;
-        uint256 startBlock;
+        uint256 startBlock; // used by HelpingType.TimedHelping
         uint256 depositsReceived; // deposits received while this was the active helping
+        bool exists;
     }
 
     struct Balance {
@@ -40,6 +42,8 @@ contract SpicyCombos is Ownable {
     error NotEnoughCredits(uint256 credits, uint256 comboPrice);
     error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
     error NotEnoughDepositsForPremium(uint256 deposits, uint256 premium);
+    error FirstOnlyIncompatibleWithUseCredits();
+    error FirstOnlyUnsuccessful();
 
     modifier comboValuesInRange(
         uint256 amountDigit1,
@@ -101,7 +105,9 @@ contract SpicyCombos is Ownable {
     /// @param blocksDigit2 second significant digit in the number of blocks (or zero if there is only one significant digit).
     /// @param blocksZeros number of zeros to add to the number of blocks.
     /// @param doubleHelping Is this a double helping? If not, it's a timed helping.
+    /// @param useCredits Use credits instead of deposits for the base combo price (not including premium).
     /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
+    /// @param firstOnly Use this if you want to have a first place bonus and fail (revert) if you don't get it.
     function addHelping(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -111,6 +117,7 @@ contract SpicyCombos is Ownable {
         uint256 blocksZeros,
         bool doubleHelping,
         bool useCredits,
+        bool firstOnly,
         uint256 premium
     )
         external
@@ -143,6 +150,9 @@ contract SpicyCombos is Ownable {
         bool queueEmpty = Heap.size(queue.heapData) == 0;
 
         if (useCredits) {
+            if (firstOnly) {
+                revert FirstOnlyIncompatibleWithUseCredits();
+            }
             if (balance.credits < comboPrice) {
                 revert NotEnoughCredits(balance.credits, comboPrice);
             }
@@ -152,24 +162,37 @@ contract SpicyCombos is Ownable {
             if (balance.deposits < comboPrice) {
                 revert NotEnoughDeposits(balance.deposits, comboPrice);
             }
-            if (!queueEmpty) {
-                balance.deposits -= comboPrice;
-                transferRewardToFirstInQueue(comboId);
-            }
+            balance.deposits -= comboPrice;
         }
 
         // Update Queue
+        uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
+        removeActiveHelpingIfExpired(queue, timeLimit);
 
-        HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
-        Heap.insert(queue.heapData, node);
-        queue.helpings[msg.sender] = Helping({
+        Helping memory helping = Helping({
             owner: msg.sender,
             helpingType: doubleHelping ? HelpingType.DoubleHelping : HelpingType.TimedHelping,
             startBlock: block.number,
-            // deposits received while this was the active helping. If the queue is empty, set this to 1
-            // to enable the creator bonus. (See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .)
-            depositsReceived: queueEmpty ? 1 : 0
+            depositsReceived: 0,
+            exists: true
         });
+
+        if (queue.activeHelping.exists) {
+            transferRewardToActiveHelping(queue);
+            removeActiveHelpingIfExpired(queue, timeLimit); // Transferring the reward may have caused an active double helping to expire.
+        }
+
+        // Check if the reward transfer removed the active helping.
+        if (queue.activeHelping.exists) {
+            if (firstOnly) revert FirstOnlyUnsuccessful();
+            HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
+            Heap.insert(queue.heapData, node);
+        } else {
+            // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
+            // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
+            helping.depositsReceived = 1;
+            queue.activeHelping = helping;
+        }
     }
 
     function deposit() external payable {
@@ -203,7 +226,7 @@ contract SpicyCombos is Ownable {
         unchecked {
             balance.deposits -= increaseAmount; // premiums go to the dev fund
         }
-        
+
         uint256 comboId = computeComboId(
             amountDigit1,
             amountDigit2,
@@ -283,5 +306,26 @@ contract SpicyCombos is Ownable {
         return (digit1 * 10 + digit2) * 10**zeros;
     }
 
-    function transferRewardToFirstInQueue(uint256 comboId) internal {}
+    function removeActiveHelpingIfExpired(Queue storage queue, uint256 timeLimit) internal {
+        // Check the active helping to see if it's expired
+        Helping storage activeHelping = queue.activeHelping;
+        bool expired;
+        if (activeHelping.helpingType == HelpingType.DoubleHelping && activeHelping.depositsReceived >= 2) {
+            expired = true;
+        } else if (
+            activeHelping.helpingType == HelpingType.TimedHelping && activeHelping.startBlock + timeLimit > block.number
+        ) {
+            expired = true;
+        }
+        if (expired) {
+            delete queue.helpings[activeHelping.owner];
+            HeapData storage heap = queue.heapData;
+            if (Heap.size(heap) != 0) {
+                HeapNode memory next = Heap.removeFirst(queue.heapData);
+                queue.activeHelping = queue.helpings[next.addr];
+            }
+        }
+    }
+
+    function transferRewardToActiveHelping(Queue storage queue) internal {}
 }
