@@ -226,8 +226,10 @@ contract SpicyCombos is Ownable {
         }
 
         unchecked {
-            balance.deposits -= increaseAmount; // Premiums go to the dev fund.
+            balance.deposits -= increaseAmount; 
         }
+
+        devFund += increaseAmount;
 
         uint256 comboId = computeComboId(
             amountDigit1,
