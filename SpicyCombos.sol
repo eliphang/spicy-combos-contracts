@@ -32,7 +32,7 @@ contract SpicyCombos is Ownable {
         uint256 creditsInUse;
     }
 
-    uint256 public totalDeposits = 0;
+    uint256 public devFund = 0;
 
     /// the minimum cost of a helping. All combo costs will be a multiple of this.
     uint256 public immutable minValue;
@@ -82,21 +82,17 @@ contract SpicyCombos is Ownable {
     }
 
     receive() external payable {
-        balances[msg.sender].deposits += msg.value;
+        deposit();
     }
 
     /// Withdraw all funds set aside for the dev fund.
     /// @dev The contract "owner" is considered the destination address of the dev fund.
     /// @dev The owner has no other privilege than to receive the amount set aside in the dev fund.
     function withdrawDevFund() external {
-        uint256 balance = address(this).balance;
-        uint256 devFund = balance - totalDeposits;
-        uint256 tempDeposits = totalDeposits;
-        // Temporarily set `totalDeposits` to the entire contract balance to disallow reentrancy from the devFund to withdraw more than its share.
-        totalDeposits = balance;
-        owner().call{value: devFund}(""); // The devFund might be a contract, so forward all gas.
-        // Set `totalDeposits` back to what it was.
-        totalDeposits = tempDeposits;
+        // Disallow reentrancy from the devFund to withdraw more than its share.
+        uint256 withdrawAmount = devFund;
+        devFund = 0;
+        owner().call{value: withdrawAmount}(""); // The devFund might be a contract, so forward all gas.
     }
 
     /// Add a helping to a combo. The first six parameters uniquely define a combo.
@@ -137,8 +133,10 @@ contract SpicyCombos is Ownable {
         }
 
         unchecked {
-            balance.deposits -= premium; // Premiums go to the dev fund.
+            balance.deposits -= premium;
         }
+
+        devFund += premium;
 
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -169,7 +167,6 @@ contract SpicyCombos is Ownable {
             }
             balance.deposits -= comboPrice;
             balance.depositsInUse += comboPrice;
-            totalDeposits += comboPrice;
         }
 
         // Update queue.
@@ -204,12 +201,6 @@ contract SpicyCombos is Ownable {
         } else {
             combo.activeHelping = helping;
         }
-    }
-
-    function deposit() external payable {
-        Balance storage balance = balances[msg.sender];
-
-        balances[msg.sender].deposits += msg.value;
     }
 
     /// Increase the premium of the helping in the queue for the combo uniquely identified by the amount and blocks.
@@ -281,6 +272,10 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
+    }
+
+    function deposit() public payable {
+        balances[msg.sender].deposits += msg.value;
     }
 
     function computeComboId(
