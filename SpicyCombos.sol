@@ -148,9 +148,6 @@ contract SpicyCombos is Ownable {
         );
         uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
 
-        Combo storage combo = combos[comboId];
-        bool queueEmpty = PriQueue.size(combo.queue) == 0;
-
         if (useCredits) {
             if (firstOnly) {
                 revert FirstOnlyIncompatibleWithUseCredits();
@@ -171,6 +168,7 @@ contract SpicyCombos is Ownable {
 
         // Update queue.
 
+        Combo storage combo = combos[comboId];
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
         removeActiveHelpingIfExpired(combo, timeLimit);
 
@@ -182,8 +180,6 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
-        combo.helpings[msg.sender] = helping;
-
         if (combo.activeHelping.exists) {
             if (firstOnly) revert FirstOnlyUnsuccessful();
             ++combo.activeHelping.depositsReceived;
@@ -193,6 +189,8 @@ contract SpicyCombos is Ownable {
             // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
             helping.depositsReceived = 1;
         }
+
+        combo.helpings[msg.sender] = helping;
 
         // Check if the reward transfer removed the active helping.
         if (combo.activeHelping.exists) {
@@ -226,7 +224,7 @@ contract SpicyCombos is Ownable {
         }
 
         unchecked {
-            balance.deposits -= increaseAmount; 
+            balance.deposits -= increaseAmount;
         }
 
         devFund += increaseAmount;
