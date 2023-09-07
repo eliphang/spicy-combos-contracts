@@ -12,16 +12,15 @@ contract SpicyCombos is Ownable {
     }
 
     struct Queue {
-        HeapData queue;
+        HeapData heapData;
         mapping(address => Helping) helpings;
     }
 
     struct Helping {
         address owner;
         HelpingType helpingType;
-        bool usingCredit; // Is this using a credit or a deposit?
-        uint startBlock;
-        uint depositsWhileActive;
+        uint256 startBlock;
+        uint256 depositsReceived; // deposits received while this was the active helping
     }
 
     struct Balance {
@@ -118,14 +117,8 @@ contract SpicyCombos is Ownable {
         payable
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
-        HelpingType helpingType;
-        if (doubleHelping) {
-            helpingType = HelpingType.DoubleHelping;
-        } else {
-            helpingType = HelpingType.TimedHelping;
-        }
-
         Balance storage balance = balances[msg.sender];
+        // Make sure addHelping() never calls an outside function or this could get ugly if addHelping() is reentered.
         balance.deposits += msg.value;
 
         if (balance.deposits < premium) {
@@ -146,6 +139,9 @@ contract SpicyCombos is Ownable {
         );
         uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
 
+        Queue storage queue = queues[comboId];
+        bool queueEmpty = Heap.size(queue.heapData) == 0;
+
         if (useCredits) {
             if (balance.credits < comboPrice) {
                 revert NotEnoughCredits(balance.credits, comboPrice);
@@ -156,10 +152,27 @@ contract SpicyCombos is Ownable {
             if (balance.deposits < comboPrice) {
                 revert NotEnoughDeposits(balance.deposits, comboPrice);
             }
-            balance.deposits -= comboPrice;
-            transferRewardToFirstInQueue(comboId);
+            if (!queueEmpty) {
+                balance.deposits -= comboPrice;
+                transferRewardToFirstInQueue(comboId);
+            }
         }
-        updateQueue(comboId, helpingType, useCredits, premium);
+
+        // Update Queue
+
+        HeapNode memory node = HeapNode({
+            addr: msg.sender,
+            priority: premium
+        });
+        Heap.insert(queue.heapData, node);
+        queue.helpings[msg.sender] = Helping({
+            owner: msg.sender,
+            helpingType: doubleHelping ? HelpingType.DoubleHelping : HelpingType.TimedHelping,
+            startBlock: block.number,
+            // deposits received while this was the active helping. If the queue is empty, set this to 1
+            // to enable the creator bonus. (See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .)
+            depositsReceived: queueEmpty ? 1 : 0
+        });
     }
 
     function deposit() external payable {
@@ -187,7 +200,11 @@ contract SpicyCombos is Ownable {
         external
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
-        returns(uint size, uint premium, address activeHelpingOwner)
+        returns (
+            uint256 size,
+            uint256 premium,
+            address activeHelpingOwner
+        )
     {
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -234,11 +251,4 @@ contract SpicyCombos is Ownable {
     }
 
     function transferRewardToFirstInQueue(uint256 comboId) internal {}
-
-    function updateQueue(
-        uint256 comboId,
-        HelpingType helpingType,
-        bool useCredits,
-        uint256 premium
-    ) internal {}
 }
