@@ -43,7 +43,7 @@ contract SpicyCombos is Ownable {
 
     event HelpingAdded(uint256 indexed comboId, address indexed owner, uint256 premium);
     event HelpingRemoved(uint256 indexed comboId, address indexed owner);
-    event PremiumIncreased(int256 indexed comboId, address indexed owner, uint256 premium);
+    event PremiumIncreased(uint256 indexed comboId, address indexed owner, uint256 newPremium);
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughAvailableCredits(uint256 availableCredits, uint256 comboPrice);
@@ -267,6 +267,8 @@ contract SpicyCombos is Ownable {
         QueueEntry memory entry = PriQueue.removeQueueEntry(combo.queue, msg.sender);
         entry.priority += increaseAmount;
         PriQueue.insert(combo.queue, entry);
+
+        emit PremiumIncreased(comboId, msg.sender, entry.priority);
     }
 
     /// Withdraw some available deposits
