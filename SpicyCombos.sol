@@ -26,9 +26,9 @@ contract SpicyCombos is Ownable {
     }
 
     struct Balance {
-        uint256 deposits;
+        uint256 availableDeposits;
         uint256 depositsInUse;
-        uint256 credits;
+        uint256 availableCredits;
         uint256 creditsInUse;
     }
 
@@ -41,9 +41,10 @@ contract SpicyCombos is Ownable {
     mapping(address => Balance) public balances;
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
-    error NotEnoughCredits(uint256 credits, uint256 comboPrice);
-    error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
-    error NotEnoughDepositsForPremium(uint256 deposits);
+    error NotEnoughAvailableCredits(uint256 availableCredits, uint256 comboPrice);
+    error NotEnoughAvailableDeposits(uint256 availableDeposits, uint256 comboPrice);
+    error NotEnoughAvailableDepositsForPremium(uint256 availableDeposits);
+    error WithdrawAmountExceedsAvailableDeposits(uint256 availableDeposits);
     error FirstOnlyIncompatibleWithUseCredits();
     error FirstOnlyUnsuccessful();
     error HelpingNotFoundForCaller();
@@ -128,14 +129,14 @@ contract SpicyCombos is Ownable {
 
         Balance storage balance = balances[msg.sender];
         // Make sure addHelping() never calls an outside function or there could be a reentrancy attack.
-        balance.deposits += msg.value;
+        balance.availableDeposits += msg.value;
 
-        if (balance.deposits < premium) {
-            revert NotEnoughDepositsForPremium(balance.deposits);
+        if (balance.availableDeposits < premium) {
+            revert NotEnoughAvailableDepositsForPremium(balance.availableDeposits);
         }
 
         unchecked {
-            balance.deposits -= premium;
+            balance.availableDeposits -= premium;
         }
 
         devFund += premium;
@@ -154,17 +155,17 @@ contract SpicyCombos is Ownable {
             if (firstOnly) {
                 revert FirstOnlyIncompatibleWithUseCredits();
             }
-            if (balance.credits < comboPrice) {
-                revert NotEnoughCredits(balance.credits, comboPrice);
+            if (balance.availableCredits < comboPrice) {
+                revert NotEnoughAvailableCredits(balance.availableCredits, comboPrice);
             }
-            balance.credits -= comboPrice;
+            balance.availableCredits -= comboPrice;
             balance.creditsInUse += comboPrice;
         } else {
             // use deposits
-            if (balance.deposits < comboPrice) {
-                revert NotEnoughDeposits(balance.deposits, comboPrice);
+            if (balance.availableDeposits < comboPrice) {
+                revert NotEnoughAvailableDeposits(balance.availableDeposits, comboPrice);
             }
-            balance.deposits -= comboPrice;
+            balance.availableDeposits -= comboPrice;
             balance.depositsInUse += comboPrice;
         }
 
@@ -219,14 +220,14 @@ contract SpicyCombos is Ownable {
     {
         Balance storage balance = balances[msg.sender];
         // Make sure increasePremium() never calls an outside function or there could be a reentrancy attack.
-        balance.deposits += msg.value;
+        balance.availableDeposits += msg.value;
 
-        if (balance.deposits < increaseAmount) {
-            revert NotEnoughDepositsForPremium(balance.deposits);
+        if (balance.availableDeposits < increaseAmount) {
+            revert NotEnoughAvailableDepositsForPremium(balance.availableDeposits);
         }
 
         unchecked {
-            balance.deposits -= increaseAmount;
+            balance.availableDeposits -= increaseAmount;
         }
 
         devFund += increaseAmount;
@@ -241,10 +242,8 @@ contract SpicyCombos is Ownable {
         );
 
         Combo storage combo = combos[comboId];
-        if(combo.activeHelping.owner == msg.sender) revert CannotIncreasePremiumOfActiveHelping();
-
-        Helping storage helping = combo.helpings[msg.sender];
-        if(!helping.exists) revert HelpingNotFoundForCaller();
+        if (combo.activeHelping.owner == msg.sender) revert CannotIncreasePremiumOfActiveHelping();
+        if (!combo.helpings[msg.sender].exists) revert HelpingNotFoundForCaller();
 
         // Remove the helping from the queue and re-add it with the new priority.
         QueueEntry memory entry = PriQueue.removeQueueEntry(combo.queue, msg.sender);
@@ -252,7 +251,18 @@ contract SpicyCombos is Ownable {
         PriQueue.insert(combo.queue, entry);
     }
 
-    function withdraw() external {}
+    function withdraw(uint256 amount) external {
+        Balance storage balance = balances[msg.sender];
+
+        if (amount > balance.availableDeposits)
+            revert WithdrawAmountExceedsAvailableDeposits(balance.availableDeposits);
+
+        unchecked {
+            balance.availableDeposits -= amount;
+        }
+
+        payable(msg.sender).transfer(amount);
+    }
 
     function removeHelping() external {}
 
@@ -288,7 +298,7 @@ contract SpicyCombos is Ownable {
     }
 
     function deposit() public payable {
-        balances[msg.sender].deposits += msg.value;
+        balances[msg.sender].availableDeposits += msg.value;
     }
 
     function computeComboId(
