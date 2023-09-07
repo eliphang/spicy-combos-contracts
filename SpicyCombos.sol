@@ -43,9 +43,11 @@ contract SpicyCombos is Ownable {
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughCredits(uint256 credits, uint256 comboPrice);
     error NotEnoughDeposits(uint256 deposits, uint256 comboPrice);
-    error NotEnoughDepositsForPremium(uint256 deposits, uint256 premium);
+    error NotEnoughDepositsForPremium(uint256 deposits);
     error FirstOnlyIncompatibleWithUseCredits();
     error FirstOnlyUnsuccessful();
+    error HelpingNotFoundForCaller();
+    error CannotIncreasePremiumOfActiveHelping();
 
     modifier comboValuesInRange(
         uint256 amountDigit1,
@@ -129,7 +131,7 @@ contract SpicyCombos is Ownable {
         balance.deposits += msg.value;
 
         if (balance.deposits < premium) {
-            revert NotEnoughDepositsForPremium(balance.deposits, premium);
+            revert NotEnoughDepositsForPremium(balance.deposits);
         }
 
         unchecked {
@@ -220,7 +222,7 @@ contract SpicyCombos is Ownable {
         balance.deposits += msg.value;
 
         if (balance.deposits < increaseAmount) {
-            revert NotEnoughDepositsForPremium(balance.deposits, increaseAmount);
+            revert NotEnoughDepositsForPremium(balance.deposits);
         }
 
         unchecked {
@@ -237,6 +239,17 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
+
+        Combo storage combo = combos[comboId];
+        if(combo.activeHelping.owner == msg.sender) revert CannotIncreasePremiumOfActiveHelping();
+
+        Helping storage helping = combo.helpings[msg.sender];
+        if(!helping.exists) revert HelpingNotFoundForCaller();
+
+        // Remove the helping from the queue and re-add it with the new priority.
+        QueueEntry memory entry = PriQueue.removeQueueEntry(combo.queue, msg.sender);
+        entry.priority += increaseAmount;
+        PriQueue.insert(combo.queue, entry);
     }
 
     function withdraw() external {}

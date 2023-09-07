@@ -29,15 +29,17 @@ library PriQueue {
     /// Remove and return the node with the highest priority
     function removeFirst(QueueData storage self) internal returns (QueueEntry memory node) {
         node = self.nodes[ROOT_INDEX];
-        removeQueueEntry(self, node);
+        removeQueueEntry(self, node.addr);
     }
 
-    function removeQueueEntry(QueueData storage self, QueueEntry memory node) internal {
-        uint256 nodeIndex = self.addrToNodeIndex[node.addr];
+    function removeQueueEntry(QueueData storage self, address addr) internal returns (QueueEntry memory node) {
+        uint256 nodeIndex = self.addrToNodeIndex[addr];
+        node = self.nodes[nodeIndex];
+
         uint256 lastIndex = self.nodes.length - 1;
         QueueEntry memory lastQueueEntry = self.nodes[lastIndex];
 
-        delete self.addrToNodeIndex[node.addr]; // Delete the mapping from addr to QueueEntry Index.
+        delete self.addrToNodeIndex[addr]; // Delete the mapping from addr to QueueEntry Index.
         delete self.nodes[nodeIndex]; // Delete the QueueEntry struct for the removed node.
         self.nodes.pop(); // Reduce the heap size by one.
 
