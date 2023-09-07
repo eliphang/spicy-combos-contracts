@@ -2,7 +2,7 @@
 pragma solidity ^0.8.7;
 
 import "@openzeppelin/contracts@4.9.3/access/Ownable.sol";
-import "./Heap.sol";
+import "./PriQueue.sol";
 
 /// @custom:repo https://github.com/eliphang/spicy-combos-contracts
 contract SpicyCombos is Ownable {
@@ -11,8 +11,8 @@ contract SpicyCombos is Ownable {
         TimedHelping
     }
 
-    struct Queue {
-        HeapData heapData; // contains all helpings after the active one
+    struct Combo {
+        QueueData queue; // contains all helpings after the active one
         mapping(address => Helping) helpings;
         Helping activeHelping;
     }
@@ -34,10 +34,10 @@ contract SpicyCombos is Ownable {
 
     uint256 public totalDeposits = 0;
 
-    /// The minimum cost of a helping. All combo costs will be a multiple of this.
+    /// the minimum cost of a helping. All combo costs will be a multiple of this.
     uint256 public immutable minValue;
 
-    mapping(uint256 => Queue) queues; // The keys are comboIds
+    mapping(uint256 => Combo) combos; // The keys are comboIds.
     mapping(address => Balance) public balances;
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
@@ -92,9 +92,9 @@ contract SpicyCombos is Ownable {
         uint256 balance = address(this).balance;
         uint256 devFund = balance - totalDeposits;
         uint256 tempDeposits = totalDeposits;
-        // Temporarily set `totalDeposits` to the entire smart contract balance to disallow the devFund to use reentrancy to withdraw more than its share.
+        // Temporarily set `totalDeposits` to the entire contract balance to disallow reentrancy from the devFund to withdraw more than its share.
         totalDeposits = balance;
-        owner().call{value: devFund}(""); // the devFund might be a smart contract, so forward all gas
+        owner().call{value: devFund}(""); // The devFund might be a contract, so forward all gas.
         // Set `totalDeposits` back to what it was.
         totalDeposits = tempDeposits;
     }
@@ -108,7 +108,7 @@ contract SpicyCombos is Ownable {
     /// @param blocksZeros number of zeros to add to the number of blocks.
     /// @param doubleHelping Is this a double helping? If not, it's a timed helping.
     /// @param useCredits Use credits instead of deposits for the base combo price (not including premium).
-    /// @param firstOnly Use this if you want to have a first place bonus and fail (revert) if you don't get it.
+    /// @param firstOnly Use this if you want a first place bonus and fail (revert) if you don't get it.
     /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
     function addHelping(
         uint256 amountDigit1,
@@ -137,7 +137,7 @@ contract SpicyCombos is Ownable {
         }
 
         unchecked {
-            balance.deposits -= premium; // premiums go to the dev fund
+            balance.deposits -= premium; // Premiums go to the dev fund.
         }
 
         uint256 comboId = computeComboId(
@@ -150,8 +150,8 @@ contract SpicyCombos is Ownable {
         );
         uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
 
-        Queue storage queue = queues[comboId];
-        bool queueEmpty = Heap.size(queue.heapData) == 0;
+        Combo storage combo = combos[comboId];
+        bool queueEmpty = PriQueue.size(combo.queue) == 0;
 
         if (useCredits) {
             if (firstOnly) {
@@ -175,7 +175,7 @@ contract SpicyCombos is Ownable {
         // Update queue.
 
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
-        removeActiveHelpingIfExpired(queue, timeLimit);
+        removeActiveHelpingIfExpired(combo, timeLimit);
 
         Helping memory helping = Helping({
             owner: msg.sender,
@@ -185,12 +185,12 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
-        queue.helpings[msg.sender] = helping;
+        combo.helpings[msg.sender] = helping;
 
-        if (queue.activeHelping.exists) {
+        if (combo.activeHelping.exists) {
             if (firstOnly) revert FirstOnlyUnsuccessful();
-            ++queue.activeHelping.depositsReceived;
-            removeActiveHelpingIfExpired(queue, timeLimit); // Transferring the reward may have caused an active double helping to expire.
+            ++combo.activeHelping.depositsReceived;
+            removeActiveHelpingIfExpired(combo, timeLimit); // Transferring the reward may cause the active double helping to expire.
         } else {
             // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
             // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
@@ -198,11 +198,11 @@ contract SpicyCombos is Ownable {
         }
 
         // Check if the reward transfer removed the active helping.
-        if (queue.activeHelping.exists) {
-            HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
-            Heap.insert(queue.heapData, node);
+        if (combo.activeHelping.exists) {
+            QueueEntry memory entry = QueueEntry({addr: msg.sender, priority: premium});
+            PriQueue.insert(combo.queue, entry);
         } else {
-            queue.activeHelping = helping;
+            combo.activeHelping = helping;
         }
     }
 
@@ -235,7 +235,7 @@ contract SpicyCombos is Ownable {
         }
 
         unchecked {
-            balance.deposits -= increaseAmount; // premiums go to the dev fund
+            balance.deposits -= increaseAmount; // Premiums go to the dev fund.
         }
 
         uint256 comboId = computeComboId(
@@ -252,11 +252,11 @@ contract SpicyCombos is Ownable {
 
     function removeHelping() external {}
 
-    /// Get a queue's size, premium, and active address for the combo uniquely identified by the amount and blocks.
-    /// @return size the size of the queue
-    /// @return premium the premium that must be exceeded to take the active spot in this queue
+    /// Get a combo's queue size, premium, and active address for the combo uniquely identified by the amount and blocks.
+    /// @return queueSize the size of the queue
+    /// @return premium the premium that must be exceeded to take the first position in the queue
     /// @return activeOwner the address of the owner of the active helping
-    function queueInfo(
+    function comboInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
         uint256 amountZeros,
@@ -268,7 +268,7 @@ contract SpicyCombos is Ownable {
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
         returns (
-            uint256 size,
+            uint256 queueSize,
             uint256 premium,
             address activeOwner
         )
@@ -317,18 +317,18 @@ contract SpicyCombos is Ownable {
         return (digit1 * 10 + digit2) * 10**zeros;
     }
 
-    function removeActiveHelpingIfExpired(Queue storage queue, uint256 timeLimit) internal {
-        Helping storage active = queue.activeHelping;
+    function removeActiveHelpingIfExpired(Combo storage combo, uint256 timeLimit) internal {
+        Helping storage active = combo.activeHelping;
         if (
             (active.helpingType == HelpingType.DoubleHelping && active.depositsReceived >= 2) ||
             (active.helpingType == HelpingType.TimedHelping && active.startBlock + timeLimit > block.number)
         ) {
-            delete queue.helpings[active.owner];
-            HeapData storage heap = queue.heapData;
-            if (Heap.size(heap) != 0) {
-                HeapNode memory next = Heap.removeFirst(queue.heapData);
-                queue.activeHelping = queue.helpings[next.addr];
-                queue.activeHelping.startBlock = block.number; // when a helping becomes the active one, start the timer
+            delete combo.helpings[active.owner];
+            // If there's a queue, remove the first entry and make it the new active helping.
+            if (PriQueue.size(combo.queue) != 0) {
+                QueueEntry memory first = PriQueue.removeFirst(combo.queue);
+                combo.activeHelping = combo.helpings[first.addr];
+                combo.activeHelping.startBlock = block.number; // When a helping becomes the active one, start the timer.
             }
         }
     }

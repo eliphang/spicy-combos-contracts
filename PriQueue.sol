@@ -4,73 +4,73 @@ pragma solidity ^0.8.7;
 
 // Adapted from https://github.com/zmitton/eth-heap/blob/916e884387a650ed83bce6b78f97c372b6dcc53f/contracts/Heap.sol
 
-struct HeapData {
-    HeapNode[] nodes; // root is index 1; index 0 not used
+struct QueueData {
+    QueueEntry[] nodes; // root is index 1; index 0 not used
     mapping(address => uint256) addrToNodeIndex;
 }
 
-struct HeapNode {
+struct QueueEntry {
     address addr;
     uint256 priority;
 }
 
-library Heap {
+library PriQueue {
     uint256 constant ROOT_INDEX = 1;
 
-    function insert(HeapData storage self, HeapNode memory node) internal {
+    function insert(QueueData storage self, QueueEntry memory node) internal {
         if (self.nodes.length == 0) {
             self.nodes.push(node);
         } else {
-            self.nodes.push(HeapNode(address(0), 0)); // Create a new spot in the heap.
+            self.nodes.push(QueueEntry(address(0), 0)); // Create a new spot in the heap.
             _siftUp(self, node, self.nodes.length - 1); // Sift up the new node, also filling in the new spot.
         }
     }
 
     /// Remove and return the node with the highest priority
-    function removeFirst(HeapData storage self) internal returns (HeapNode memory node) {
+    function removeFirst(QueueData storage self) internal returns (QueueEntry memory node) {
         node = self.nodes[ROOT_INDEX];
-        removeHeapNode(self, node);
+        removeQueueEntry(self, node);
     }
 
-    function removeHeapNode(HeapData storage self, HeapNode memory node) internal {
+    function removeQueueEntry(QueueData storage self, QueueEntry memory node) internal {
         uint256 nodeIndex = self.addrToNodeIndex[node.addr];
         uint256 lastIndex = self.nodes.length - 1;
-        HeapNode memory lastHeapNode = self.nodes[lastIndex];
+        QueueEntry memory lastQueueEntry = self.nodes[lastIndex];
 
-        delete self.addrToNodeIndex[node.addr]; // Delete the mapping from addr to HeapNode Index.
-        delete self.nodes[nodeIndex]; // Delete the HeapNode struct for the removed node.
+        delete self.addrToNodeIndex[node.addr]; // Delete the mapping from addr to QueueEntry Index.
+        delete self.nodes[nodeIndex]; // Delete the QueueEntry struct for the removed node.
         self.nodes.pop(); // Reduce the heap size by one.
 
         if (nodeIndex != lastIndex) {
             // Put the last node in place of the removed node.
-            _siftUp(self, lastHeapNode, nodeIndex); // A sift up might first be required.
+            _siftUp(self, lastQueueEntry, nodeIndex); // A sift up might first be required.
             _siftDown(self, self.nodes[nodeIndex], nodeIndex); // Sift down the node that has taken the removed node's place.
         }
     }
 
-    function dump(HeapData storage self) internal view returns (HeapNode[] storage) {
+    function dump(QueueData storage self) internal view returns (QueueEntry[] storage) {
         return self.nodes;
     }
 
-    function getByHeapId(HeapData storage self, address addr)
+    function getByHeapId(QueueData storage self, address addr)
         internal
         view
-        returns (HeapNode storage)
+        returns (QueueEntry storage)
     {
         return self.nodes[self.addrToNodeIndex[addr]];
     }
 
-    function getFirst(HeapData storage self) internal view returns (HeapNode storage) {
+    function getFirst(QueueData storage self) internal view returns (QueueEntry storage) {
         return self.nodes[ROOT_INDEX];
     }
 
-    function size(HeapData storage self) internal view returns (uint256) {
+    function size(QueueData storage self) internal view returns (uint256) {
         return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
     }
 
     function _siftUp(
-        HeapData storage self,
-        HeapNode memory node,
+        QueueData storage self,
+        QueueEntry memory node,
         uint256 nodeIndex
     ) private {
         if (
@@ -85,8 +85,8 @@ library Heap {
     }
 
     function _siftDown(
-        HeapData storage self,
-        HeapNode memory node,
+        QueueData storage self,
+        QueueEntry memory node,
         uint256 nodeIndex
     ) private {
         uint256 length = self.nodes.length;
@@ -95,7 +95,7 @@ library Heap {
         if (length <= childIndex) {
             _insert(self, node, nodeIndex);
         } else {
-            HeapNode memory largestChild = self.nodes[childIndex];
+            QueueEntry memory largestChild = self.nodes[childIndex];
             if (
                 length > childIndex + 1 &&
                 self.nodes[childIndex + 1].priority > largestChild.priority
@@ -112,8 +112,8 @@ library Heap {
     }
 
     function _insert(
-        HeapData storage self,
-        HeapNode memory node,
+        QueueData storage self,
+        QueueEntry memory node,
         uint256 nodeIndex
     ) private {
         self.nodes[nodeIndex] = node;
