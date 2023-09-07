@@ -266,8 +266,8 @@ contract SpicyCombos is Ownable {
 
     function removeHelping() external {}
 
-    /// Get a combo's queue size, premium, and active address for the combo uniquely identified by the amount and blocks.
-    /// @return queueSize the size of the queue
+    /// Get a combo's queue length, premium, and active helping owner for the combo uniquely identified by the amount and blocks.
+    /// @return queueLength the length of the queue
     /// @return premium the premium that must be exceeded to take the first position in the queue
     /// @return activeOwner the address of the owner of the active helping
     function comboInfo(
@@ -282,7 +282,7 @@ contract SpicyCombos is Ownable {
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
         returns (
-            uint256 queueSize,
+            uint256 queueLength,
             uint256 premium,
             address activeOwner
         )
@@ -295,6 +295,11 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
+
+        Combo storage combo = combos[comboId];
+        activeOwner = combo.activeHelping.owner;
+        premium = PriQueue.getFirst(combo.queue).priority;
+        queueLength = PriQueue.size(combo.queue);
     }
 
     function deposit() public payable {
