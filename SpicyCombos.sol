@@ -40,8 +40,9 @@ contract SpicyCombos is Ownable {
     mapping(uint256 => Combo) combos; // The keys are comboIds.
     mapping(address => Balance) public balances;
 
-    event HelpingAdded(uint256 indexed comboId, address indexed owner);
+    event HelpingAdded(uint256 indexed comboId, address indexed owner, uint256 premium);
     event HelpingRemoved(uint256 indexed comboId, address indexed owner);
+    event PremiumIncreased(int256 indexed comboId, address indexed owner, uint256 premium);
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughAvailableCredits(uint256 availableCredits, uint256 comboPrice);
@@ -207,7 +208,7 @@ contract SpicyCombos is Ownable {
             combo.activeHelping = helping;
         }
 
-        emit HelpingAdded(comboId, msg.sender);
+        emit HelpingAdded(comboId, msg.sender, premium);
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
