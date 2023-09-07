@@ -160,10 +160,7 @@ contract SpicyCombos is Ownable {
 
         // Update Queue
 
-        HeapNode memory node = HeapNode({
-            addr: msg.sender,
-            priority: premium
-        });
+        HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
         Heap.insert(queue.heapData, node);
         queue.helpings[msg.sender] = Helping({
             owner: msg.sender,
