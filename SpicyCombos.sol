@@ -177,14 +177,16 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
+        queue.helpings[msg.sender] = helping;
+
         if (queue.activeHelping.exists) {
+            if (firstOnly) revert FirstOnlyUnsuccessful();          
             transferRewardToActiveHelping(queue);
             removeActiveHelpingIfExpired(queue, timeLimit); // Transferring the reward may have caused an active double helping to expire.
         }
 
         // Check if the reward transfer removed the active helping.
         if (queue.activeHelping.exists) {
-            if (firstOnly) revert FirstOnlyUnsuccessful();
             HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
             Heap.insert(queue.heapData, node);
         } else {
@@ -323,6 +325,7 @@ contract SpicyCombos is Ownable {
             if (Heap.size(heap) != 0) {
                 HeapNode memory next = Heap.removeFirst(queue.heapData);
                 queue.activeHelping = queue.helpings[next.addr];
+                queue.activeHelping.startBlock = block.number; // when a helping becomes the active one, start the timer
             }
         }
     }
