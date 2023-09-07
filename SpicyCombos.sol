@@ -37,7 +37,7 @@ contract SpicyCombos is Ownable {
     /// the minimum cost of a helping. All combo costs will be a multiple of this.
     uint256 public immutable minValue;
 
-    mapping(uint256 => Combo) public combos; // The keys are comboIds.
+    mapping(uint256 => Combo) combos; // The keys are comboIds.
     mapping(address => Balance) public balances;
 
     event HelpingAdded(uint256 indexed comboId, address indexed owner);
@@ -177,7 +177,7 @@ contract SpicyCombos is Ownable {
 
         Combo storage combo = combos[comboId];
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
-        removeActiveHelpingIfExpired(combo, timeLimit);
+        removeActiveHelpingIfExpired(comboId, timeLimit);
 
         Helping memory helping = Helping({
             owner: msg.sender,
@@ -190,7 +190,7 @@ contract SpicyCombos is Ownable {
         if (combo.activeHelping.exists) {
             if (firstOnly) revert FirstOnlyUnsuccessful();
             ++combo.activeHelping.depositsReceived;
-            removeActiveHelpingIfExpired(combo, timeLimit); // Transferring the reward may cause the active double helping to expire.
+            removeActiveHelpingIfExpired(comboId, timeLimit); // Transferring the reward may cause the active double helping to expire.
         } else {
             // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
             // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
@@ -251,7 +251,7 @@ contract SpicyCombos is Ownable {
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         // First remove the active listing if it expired
-        removeActiveHelpingIfExpired(combo, timeLimit);
+        removeActiveHelpingIfExpired(comboId, timeLimit);
 
         if (combo.activeHelping.owner == msg.sender) revert CannotIncreasePremiumOfActiveHelping();
         if (!combo.helpings[msg.sender].exists) revert HelpingNotFoundForCaller();
@@ -310,7 +310,7 @@ contract SpicyCombos is Ownable {
         }
 
         // First remove the active helping if it expired.
-        removeActiveHelpingIfExpired(combo, timeLimit);
+        removeActiveHelpingIfExpired(comboId, timeLimit);
 
         // Removing the active helping might have removed our helping, so check again.
         if (combo.helpings[msg.sender].exists) {
@@ -319,7 +319,7 @@ contract SpicyCombos is Ownable {
                 if (helpingType == HelpingType.TimedHelping)
                     revert RemovingActiveTimedHelpingNotAllowed();
                 depositsReceived = combo.activeHelping.depositsReceived;
-                removeActiveHelping(combo);
+                removeActiveHelping(comboId);
             } else {
                 PriQueue.removeQueueEntry(combo.queue, msg.sender);
                 delete combo.helpings[msg.sender];
@@ -417,15 +417,17 @@ contract SpicyCombos is Ownable {
         return (digit1 * 10 + digit2) * 10**zeros;
     }
 
-    function removeActiveHelpingIfExpired(Combo storage combo, uint256 timeLimit) internal {
+    function removeActiveHelpingIfExpired(uint comboId, uint256 timeLimit) internal {
+        Combo storage combo = combos[comboId];
         Helping storage active = combo.activeHelping;
         if (
             (active.helpingType == HelpingType.DoubleHelping && active.depositsReceived >= 2) ||
             (active.helpingType == HelpingType.TimedHelping && active.startBlock + timeLimit > block.number)
-        ) removeActiveHelping(combo);
+        ) removeActiveHelping(comboId);
     }
 
-    function removeActiveHelping(Combo storage combo) internal {
+    function removeActiveHelping(uint comboId) internal {
+        Combo storage combo = combos[comboId];
         address activeHelpingOwner = combo.activeHelping.owner;
         delete combo.helpings[activeHelpingOwner];
         // If there's a queue, remove the first entry and make it the new active helping.
