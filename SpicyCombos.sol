@@ -22,6 +22,7 @@ contract SpicyCombos is Ownable {
         HelpingType helpingType;
         uint256 startBlock; // used by HelpingType.TimedHelping
         uint256 depositsReceived; // deposits received while this was the active helping
+        bool usingCredits;
         bool exists;
     }
 
@@ -111,7 +112,7 @@ contract SpicyCombos is Ownable {
     /// @param blocksDigit2 second significant digit in the number of blocks (or zero if there is only one significant digit).
     /// @param blocksZeros number of zeros to add to the number of blocks.
     /// @param doubleHelping Is this a double helping? If not, it's a timed helping.
-    /// @param useCredits Use credits instead of deposits for the base combo price (not including premium).
+    /// @param usingCredits Use credits instead of deposits for the base combo price (not including premium).
     /// @param firstOnly Use this if you want a first place bonus and fail (revert) if you don't get it.
     /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
     function addHelping(
@@ -122,7 +123,7 @@ contract SpicyCombos is Ownable {
         uint256 blocksDigit2,
         uint256 blocksZeros,
         bool doubleHelping,
-        bool useCredits,
+        bool usingCredits,
         bool firstOnly,
         uint256 premium
     )
@@ -157,7 +158,7 @@ contract SpicyCombos is Ownable {
         uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
-        if (useCredits) {
+        if (usingCredits) {
             if (firstOnly) {
                 revert FirstOnlyIncompatibleWithUseCredits();
             }
@@ -185,6 +186,7 @@ contract SpicyCombos is Ownable {
             helpingType: doubleHelping ? HelpingType.DoubleHelping : HelpingType.TimedHelping,
             startBlock: block.number,
             depositsReceived: 0,
+            usingCredits: usingCredits,
             exists: true
         });
 
@@ -306,23 +308,28 @@ contract SpicyCombos is Ownable {
         Combo storage combo = combos[comboId];
         if (!combo.helpings[msg.sender].exists) revert HelpingNotFoundForCaller();
 
-        Balance storage balance = balances[msg.sender];
-        balance.depositsInUse -= comboPrice;
-
         // First remove the active helping if it expired.
         removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit);
 
+        Helping storage helping = combo.helpings[msg.sender];
+
         // Removing the active helping might have removed our helping, so check again.
-        if (combo.helpings[msg.sender].exists) {
+        if (helping.exists) {
             if (combo.activeHelping.owner == msg.sender) {
                 HelpingType helpingType = combo.activeHelping.helpingType;
                 if (helpingType == HelpingType.TimedHelping) revert RemovingActiveTimedHelpingNotAllowed();
                 removeActiveHelping(comboId, comboPrice);
             } else {
                 PriQueue.removeQueueEntry(combo.queue, msg.sender);
-                delete combo.helpings[msg.sender];
+                Balance storage balance = balances[msg.sender];
                 // We didn't get any deposits, so we get credits.
                 balance.availableCredits += comboPrice;
+                if (helping.usingCredits) {
+                    balance.creditsInUse -= comboPrice;
+                } else {
+                    balance.depositsInUse -= comboPrice;
+                }
+                delete combo.helpings[msg.sender];
             }
         }
 
@@ -418,15 +425,16 @@ contract SpicyCombos is Ownable {
 
     function removeActiveHelping(uint256 comboId, uint256 comboPrice) internal {
         Combo storage combo = combos[comboId];
-        address activeHelpingOwner = combo.activeHelping.owner;
-        uint256 depositsReceived = combo.activeHelping.depositsReceived;
-        Balance storage balance = balances[activeHelpingOwner];
+        Helping storage helping = combo.activeHelping;
+        address owner = helping.owner;
+        uint256 depositsReceived = helping.depositsReceived;
+        Balance storage balance = balances[owner];
         if (depositsReceived == 0) {
             // We didn't get any deposits, so we get credits.
             balance.availableCredits += comboPrice;
         } else {
             uint256 earnedAmount = comboPrice * depositsReceived;
-            if (combo.activeHelping.helpingType == HelpingType.TimedHelping) {
+            if (helping.helpingType == HelpingType.TimedHelping) {
                 // dev fund gets 10% of deposits after the first
                 devFund += ((earnedAmount - comboPrice) * 1) / 10;
                 // we get 100% of the first deposit and 90% of each one after that
@@ -434,14 +442,19 @@ contract SpicyCombos is Ownable {
             }
             balance.availableDeposits += earnedAmount;
         }
+        if (helping.usingCredits) {
+            balance.creditsInUse -= comboPrice;
+        } else {
+            balance.depositsInUse -= comboPrice;
+        }
 
-        delete combo.helpings[activeHelpingOwner];
+        delete combo.helpings[owner];
         // If there's a queue, remove the first entry and make it the new active helping.
         if (PriQueue.size(combo.queue) != 0) {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
             combo.activeHelping.startBlock = block.number; // When a helping becomes the active one, start the timer.
         }
-        emit HelpingRemoved(comboId, activeHelpingOwner);
+        emit HelpingRemoved(comboId, owner);
     }
 }
