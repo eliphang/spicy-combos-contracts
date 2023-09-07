@@ -180,9 +180,13 @@ contract SpicyCombos is Ownable {
         queue.helpings[msg.sender] = helping;
 
         if (queue.activeHelping.exists) {
-            if (firstOnly) revert FirstOnlyUnsuccessful();          
+            if (firstOnly) revert FirstOnlyUnsuccessful();
             transferRewardToActiveHelping(queue);
             removeActiveHelpingIfExpired(queue, timeLimit); // Transferring the reward may have caused an active double helping to expire.
+        } else {
+            // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
+            // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
+            helping.depositsReceived = 1;
         }
 
         // Check if the reward transfer removed the active helping.
@@ -190,9 +194,6 @@ contract SpicyCombos is Ownable {
             HeapNode memory node = HeapNode({addr: msg.sender, priority: premium});
             Heap.insert(queue.heapData, node);
         } else {
-            // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
-            // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
-            helping.depositsReceived = 1;
             queue.activeHelping = helping;
         }
     }
