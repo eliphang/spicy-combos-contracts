@@ -118,7 +118,7 @@ contract SpicyCombos is Ownable {
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
         Balance storage balance = balances[msg.sender];
-        // Make sure addHelping() never calls an outside function or this could get ugly if addHelping() is reentered.
+        // Make sure addHelping() never calls an outside function or there could be a reentrancy attack.
         balance.deposits += msg.value;
 
         if (balance.deposits < premium) {
@@ -173,16 +173,52 @@ contract SpicyCombos is Ownable {
     }
 
     function deposit() external payable {
+        Balance storage balance = balances[msg.sender];
+
         balances[msg.sender].deposits += msg.value;
     }
 
-    function increasePremium() external payable {}
+    /// Increase the premium of the helping in the queue for the combo uniquely identified by the amount and blocks.
+    function increasePremium(
+        uint256 amountDigit1,
+        uint256 amountDigit2,
+        uint256 amountZeros,
+        uint256 blocksDigit1,
+        uint256 blocksDigit2,
+        uint256 blocksZeros,
+        uint256 increaseAmount
+    )
+        external
+        payable
+        comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
+    {
+        Balance storage balance = balances[msg.sender];
+        // Make sure increasePremium() never calls an outside function or there could be a reentrancy attack.
+        balance.deposits += msg.value;
+
+        if (balance.deposits < increaseAmount) {
+            revert NotEnoughDepositsForPremium(balance.deposits, increaseAmount);
+        }
+
+        unchecked {
+            balance.deposits -= increaseAmount; // premiums go to the dev fund
+        }
+        
+        uint256 comboId = computeComboId(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        );
+    }
 
     function withdraw() external {}
 
     function removeHelping() external {}
 
-    /// Get a queue's size, premium, and active address from the six values uniquely identifying a combo.
+    /// Get a queue's size, premium, and active address for the combo uniquely identified by the amount and blocks.
     /// @return size the size of the queue
     /// @return premium the premium that must be exceeded to take the active spot in this queue
     /// @return activeHelpingOwner the address of the owner of the active helping
