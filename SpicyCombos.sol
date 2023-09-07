@@ -37,8 +37,11 @@ contract SpicyCombos is Ownable {
     /// the minimum cost of a helping. All combo costs will be a multiple of this.
     uint256 public immutable minValue;
 
-    mapping(uint256 => Combo) combos; // The keys are comboIds.
+    mapping(uint256 => Combo) public combos; // The keys are comboIds.
     mapping(address => Balance) public balances;
+
+    event HelpingAdded(uint256 indexed comboId, address indexed owner);
+    event HelpingRemoved(uint256 indexed comboId, address indexed owner);
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughAvailableCredits(uint256 availableCredits, uint256 comboPrice);
@@ -203,6 +206,8 @@ contract SpicyCombos is Ownable {
         } else {
             combo.activeHelping = helping;
         }
+
+        emit HelpingAdded(comboId, msg.sender);
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
@@ -334,6 +339,8 @@ contract SpicyCombos is Ownable {
             }
             balance.availableDeposits += earnedAmount;
         }
+
+        emit HelpingRemoved(comboId, msg.sender);
     }
 
     /// Get a combo's queue length, premium, and active helping owner for the combo identified by the amount and blocks.
@@ -419,12 +426,14 @@ contract SpicyCombos is Ownable {
     }
 
     function removeActiveHelping(Combo storage combo) internal {
-        delete combo.helpings[combo.activeHelping.owner];
+        address activeHelpingOwner = combo.activeHelping.owner;
+        delete combo.helpings[activeHelpingOwner];
         // If there's a queue, remove the first entry and make it the new active helping.
         if (PriQueue.size(combo.queue) != 0) {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
             combo.activeHelping.startBlock = block.number; // When a helping becomes the active one, start the timer.
         }
+        emit HelpingRemoved(comboId, activeHelpingOwner);
     }
 }
