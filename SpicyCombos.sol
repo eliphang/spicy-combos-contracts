@@ -27,7 +27,9 @@ contract SpicyCombos is Ownable {
 
     struct Balance {
         uint256 deposits;
+        uint256 depositsInUse;
         uint256 credits;
+        uint256 creditsInUse;
     }
 
     uint256 public totalDeposits = 0;
@@ -157,12 +159,15 @@ contract SpicyCombos is Ownable {
                 revert NotEnoughCredits(balance.credits, comboPrice);
             }
             balance.credits -= comboPrice;
+            balance.creditsInUse += comboPrice;
         } else {
             // use deposits
             if (balance.deposits < comboPrice) {
                 revert NotEnoughDeposits(balance.deposits, comboPrice);
             }
             balance.deposits -= comboPrice;
+            balance.depositsInUse += comboPrice;
+            totalDeposits += comboPrice;
         }
 
         // Update Queue
