@@ -491,6 +491,7 @@ contract SpicyCombos is Ownable {
         address owner = helping.owner;
         uint256 depositsReceived = helping.depositsReceived;
         Balance storage balance = balances[owner];
+
         if (depositsReceived == 0) {
             if (helping.helpingType == HelpingType.DoubleHelping)
                 // We didn't get any deposits, so we get credits.
@@ -501,10 +502,11 @@ contract SpicyCombos is Ownable {
                 // dev fund gets 10% of deposits after the first
                 devFund += (earnedAmount - comboPrice) / 10;
                 // we get 100% of the first deposit and 90% of each one after that
-                earnedAmount = comboPrice + ((earnedAmount - comboPrice) * 9) / 10;
+                earnedAmount = comboPrice + (earnedAmount - comboPrice) * 9 / 10;
             }
             balance.availableDeposits += earnedAmount;
         }
+
         if (helping.usingCredits) {
             balance.creditsInUse -= comboPrice;
         } else {
