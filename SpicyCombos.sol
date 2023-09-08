@@ -221,6 +221,7 @@ contract SpicyCombos is Ownable {
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
+    /// @param increaseAmount the amount to increase the premium by.
     function increasePremium(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -293,8 +294,10 @@ contract SpicyCombos is Ownable {
         payable(msg.sender).transfer(amount);
     }
 
-    /// Remove your helping from a combo, or an active double helping. The combo is identified by the amount and blocks.
-    /// You will receive available credits or deposits. See https://github.com/eliphang/spicy-combos/blob/main/README.md
+    /// Remove your helping from a queue, or remove an active double helping.
+    /// The combo is identified by the amount and blocks.
+    /// Credits or deposits for the helping will change from "inUse" to "available."
+    /// See https://github.com/eliphang/spicy-combos/blob/main/README.md .
     function removeHelping(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -325,8 +328,8 @@ contract SpicyCombos is Ownable {
         // Removing the active helping might have removed our helping, so check again.
         if (helping.exists) {
             if (combo.activeHelping.owner == msg.sender) {
-                HelpingType helpingType = combo.activeHelping.helpingType;
-                if (helpingType == HelpingType.TimedHelping) revert RemovingActiveTimedHelpingNotAllowed();
+                if (combo.activeHelping.helpingType == HelpingType.TimedHelping)
+                    revert RemovingActiveTimedHelpingNotAllowed();
                 removeActiveHelping(comboId, comboPrice, timeLimit);
             } else {
                 PriQueue.removeQueueEntry(combo.queue, msg.sender);
@@ -348,7 +351,12 @@ contract SpicyCombos is Ownable {
     /// Get info about a combo identified by the amount and blocks.
     /// @return queueLength the length of the queue
     /// @return premium the premium that must be exceeded to take the first position in the queue
+    /// @return activeHelpingExists
     /// @return activeHelpingOwner the address of the owner of the active helping
+    /// @return activeHelpingIsDoubleHelping Is the active helping a double helping? If not, it's a timed helping.
+    /// @return activeHelpingDeposits the number of deposits received while the active helping was active.
+    /// @return activeHelpingExpiration the block when the active helping will expire if it's a timed helping.
+    /// @return activeHelpingIsExpired
     function comboInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -381,8 +389,8 @@ contract SpicyCombos is Ownable {
         );
         Combo storage combo = combos[comboId];
         Helping storage activeHelping = combo.activeHelping;
-        premium = PriQueue.getFirst(combo.queue).priority;
         queueLength = PriQueue.size(combo.queue);
+        premium = PriQueue.getFirst(combo.queue).priority;
         activeHelpingExists = activeHelping.exists;
         activeHelpingOwner = activeHelping.owner;
         activeHelpingIsDoubleHelping = activeHelping.helpingType == HelpingType.DoubleHelping;
@@ -392,9 +400,6 @@ contract SpicyCombos is Ownable {
     }
 
     /// Get info about a helping owned by owner in the combo identified by the amount and blocks.
-    /// @return queueLength the length of the queue
-    /// @return premium the premium that must be exceeded to take the first position in the queue
-    /// @return activeHelpingOwner the address of the owner of the active helping
     function helpingInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -513,6 +518,7 @@ contract SpicyCombos is Ownable {
             combo.activeHelping = combo.helpings[first.addr];
             combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.
         }
+
         emit HelpingRemoved(comboId, owner);
     }
 
@@ -520,6 +526,6 @@ contract SpicyCombos is Ownable {
         Helping storage helping = combos[comboId].activeHelping;
         return
             (helping.helpingType == HelpingType.DoubleHelping && helping.depositsReceived >= 2) ||
-            (helping.helpingType == HelpingType.TimedHelping && block.number > helping.expiration);
+            (helping.helpingType == HelpingType.TimedHelping && block.number >= helping.expiration);
     }
 }
