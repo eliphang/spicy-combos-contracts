@@ -20,7 +20,7 @@ contract SpicyCombos is Ownable {
     struct Helping {
         address owner;
         HelpingType helpingType;
-        uint256 startBlock; // used by HelpingType.TimedHelping
+        uint256 expiration; // used by HelpingType.TimedHelping
         uint256 depositsReceived; // deposits received while this was the active helping
         bool usingCredits;
         bool exists;
@@ -184,7 +184,7 @@ contract SpicyCombos is Ownable {
         Helping memory helping = Helping({
             owner: msg.sender,
             helpingType: doubleHelping ? HelpingType.DoubleHelping : HelpingType.TimedHelping,
-            startBlock: block.number,
+            expiration: type(uint256).max,
             depositsReceived: 0,
             usingCredits: usingCredits,
             exists: true
@@ -320,7 +320,7 @@ contract SpicyCombos is Ownable {
             if (combo.activeHelping.owner == msg.sender) {
                 HelpingType helpingType = combo.activeHelping.helpingType;
                 if (helpingType == HelpingType.TimedHelping) revert RemovingActiveTimedHelpingNotAllowed();
-                removeActiveHelping(comboId, comboPrice);
+                removeActiveHelping(comboId, comboPrice, timeLimit);
             } else {
                 PriQueue.removeQueueEntry(combo.queue, msg.sender);
                 Balance storage balance = balances[msg.sender];
@@ -341,7 +341,7 @@ contract SpicyCombos is Ownable {
     /// Get a combo's queue length, premium, and active helping owner for the combo identified by the amount and blocks.
     /// @return queueLength the length of the queue
     /// @return premium the premium that must be exceeded to take the first position in the queue
-    /// @return activeOwner the address of the owner of the active helping
+/*     /// @return activeOwner the address of the owner of the active helping */
     function comboInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -354,10 +354,16 @@ contract SpicyCombos is Ownable {
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
         returns (
+            /*             uint256 activeHelpingExists, */
+            Helping memory activeHelping,
             uint256 queueLength,
-            uint256 premium,
-            address activeOwner
+            uint256 premium
         )
+    /*             address activeHelpingOwner, */
+    /*             bool activeHelpingIsDoubleHelping,
+            uint256 activeHelpingDeposits,
+            uint256 activeHelpingExpiration,
+            bool activeHelpingIsExpired */
     {
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -367,11 +373,16 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-
         Combo storage combo = combos[comboId];
-        activeOwner = combo.activeHelping.owner;
+        /*         Helping storage activeHelping = combo.activeHelping; */
         premium = PriQueue.getFirst(combo.queue).priority;
         queueLength = PriQueue.size(combo.queue);
+        activeHelping = combo.activeHelping;
+        /*         activeHelpingOwner = activeHelping.owner;
+        activeHelpingIsDoubleHelping = activeHelping.helpingType == HelpingType.DoubleHelping;
+        activeHelpingDeposits = activeHelping.depositsReceived;
+        activeHelpingExpiration = activeHelping.expiration;
+        activeHelpingIsExpired = isActiveHelpingExpired(comboId); */
     }
 
     function deposit() public payable {
@@ -417,28 +428,28 @@ contract SpicyCombos is Ownable {
         uint256 comboPrice,
         uint256 timeLimit
     ) internal {
-        Combo storage combo = combos[comboId];
-        Helping storage active = combo.activeHelping;
-        if (
-            (active.helpingType == HelpingType.DoubleHelping && active.depositsReceived >= 2) ||
-            (active.helpingType == HelpingType.TimedHelping && active.startBlock + timeLimit > block.number)
-        ) removeActiveHelping(comboId, comboPrice);
+        if (isActiveHelpingExpired(comboId)) removeActiveHelping(comboId, comboPrice, timeLimit);
     }
 
-    function removeActiveHelping(uint256 comboId, uint256 comboPrice) internal {
+    function removeActiveHelping(
+        uint256 comboId,
+        uint256 comboPrice,
+        uint256 timeLimit
+    ) internal {
         Combo storage combo = combos[comboId];
         Helping storage helping = combo.activeHelping;
         address owner = helping.owner;
         uint256 depositsReceived = helping.depositsReceived;
         Balance storage balance = balances[owner];
         if (depositsReceived == 0) {
-            // We didn't get any deposits, so we get credits.
-            balance.availableCredits += comboPrice;
+            if (helping.helpingType == HelpingType.DoubleHelping)
+                // We didn't get any deposits, so we get credits.
+                balance.availableCredits += comboPrice;
         } else {
             uint256 earnedAmount = comboPrice * depositsReceived;
             if (helping.helpingType == HelpingType.TimedHelping) {
                 // dev fund gets 10% of deposits after the first
-                devFund += ((earnedAmount - comboPrice) * 1) / 10;
+                devFund += (earnedAmount - comboPrice) / 10;
                 // we get 100% of the first deposit and 90% of each one after that
                 earnedAmount = comboPrice + ((earnedAmount - comboPrice) * 9) / 10;
             }
@@ -455,8 +466,15 @@ contract SpicyCombos is Ownable {
         if (PriQueue.size(combo.queue) != 0) {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
-            combo.activeHelping.startBlock = block.number; // When a helping becomes the active one, start the timer.
+            combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.
         }
         emit HelpingRemoved(comboId, owner);
+    }
+
+    function isActiveHelpingExpired(uint256 comboId) internal view returns (bool) {
+        Helping storage helping = combos[comboId].activeHelping;
+        return
+            (helping.helpingType == HelpingType.DoubleHelping && helping.depositsReceived >= 2) ||
+            (helping.helpingType == HelpingType.TimedHelping && block.number > helping.expiration);
     }
 }
