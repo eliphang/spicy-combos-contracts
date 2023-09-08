@@ -190,7 +190,7 @@ contract SpicyCombos is Ownable {
         Helping memory helping = Helping({
             owner: msg.sender,
             helpingType: doubleHelping ? HelpingType.DoubleHelping : HelpingType.TimedHelping,
-            expiration: type(uint256).max,
+            expiration: block.number + timeLimit,
             depositsReceived: 0,
             usingCredits: usingCredits,
             exists: true
