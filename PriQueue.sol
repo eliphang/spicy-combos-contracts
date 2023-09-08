@@ -54,7 +54,7 @@ library PriQueue {
         return self.nodes;
     }
 
-    function getByHeapId(QueueData storage self, address addr)
+    function getByAddress(QueueData storage self, address addr)
         internal
         view
         returns (QueueEntry storage)

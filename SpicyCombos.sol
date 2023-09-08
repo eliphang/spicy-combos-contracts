@@ -41,7 +41,13 @@ contract SpicyCombos is Ownable {
     mapping(uint256 => Combo) combos; // The keys are comboIds.
     mapping(address => Balance) public balances;
 
-    event HelpingAdded(uint256 indexed comboId, address indexed owner, uint256 premium);
+    event HelpingAdded(
+        uint256 indexed comboId,
+        address indexed owner,
+        bool indexed usingCredits,
+        bool doubleHelping,
+        uint256 premium
+    );
     event HelpingRemoved(uint256 indexed comboId, address indexed owner);
     event PremiumIncreased(uint256 indexed comboId, address indexed owner, uint256 newPremium);
 
@@ -210,7 +216,7 @@ contract SpicyCombos is Ownable {
             combo.activeHelping = helping;
         }
 
-        emit HelpingAdded(comboId, msg.sender, premium);
+        emit HelpingAdded(comboId, msg.sender, usingCredits, doubleHelping, premium);
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
@@ -338,10 +344,10 @@ contract SpicyCombos is Ownable {
         emit HelpingRemoved(comboId, msg.sender);
     }
 
-    /// Get a combo's queue length, premium, and active helping owner for the combo identified by the amount and blocks.
+    /// Get info about a combo identified by the amount and blocks.
     /// @return queueLength the length of the queue
     /// @return premium the premium that must be exceeded to take the first position in the queue
-/*     /// @return activeOwner the address of the owner of the active helping */
+    /// @return activeHelpingOwner the address of the owner of the active helping
     function comboInfo(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -354,16 +360,15 @@ contract SpicyCombos is Ownable {
         view
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
         returns (
-            /*             uint256 activeHelpingExists, */
-            Helping memory activeHelping,
             uint256 queueLength,
-            uint256 premium
-        )
-    /*             address activeHelpingOwner, */
-    /*             bool activeHelpingIsDoubleHelping,
+            uint256 premium,
+            bool activeHelpingExists,
+            address activeHelpingOwner,
+            bool activeHelpingIsDoubleHelping,
             uint256 activeHelpingDeposits,
             uint256 activeHelpingExpiration,
-            bool activeHelpingIsExpired */
+            bool activeHelpingIsExpired
+        )
     {
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -374,15 +379,54 @@ contract SpicyCombos is Ownable {
             blocksZeros
         );
         Combo storage combo = combos[comboId];
-        /*         Helping storage activeHelping = combo.activeHelping; */
+        Helping storage activeHelping = combo.activeHelping;
         premium = PriQueue.getFirst(combo.queue).priority;
         queueLength = PriQueue.size(combo.queue);
-        activeHelping = combo.activeHelping;
-        /*         activeHelpingOwner = activeHelping.owner;
+        activeHelpingExists = activeHelping.exists;
+        activeHelpingOwner = activeHelping.owner;
         activeHelpingIsDoubleHelping = activeHelping.helpingType == HelpingType.DoubleHelping;
         activeHelpingDeposits = activeHelping.depositsReceived;
         activeHelpingExpiration = activeHelping.expiration;
-        activeHelpingIsExpired = isActiveHelpingExpired(comboId); */
+        activeHelpingIsExpired = isActiveHelpingExpired(comboId);
+    }
+
+    /// Get info about a helping owned by owner in the combo identified by the amount and blocks.
+    /// @return queueLength the length of the queue
+    /// @return premium the premium that must be exceeded to take the first position in the queue
+    /// @return activeHelpingOwner the address of the owner of the active helping
+    function helpingInfo(
+        uint256 amountDigit1,
+        uint256 amountDigit2,
+        uint256 amountZeros,
+        uint256 blocksDigit1,
+        uint256 blocksDigit2,
+        uint256 blocksZeros,
+        address owner
+    )
+        external
+        view
+        comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
+        returns (
+            bool exists,
+            bool isDoubleHelping,
+            bool usingCredits,
+            uint256 premium
+        )
+    {
+        uint256 comboId = computeComboId(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        );
+        Combo storage combo = combos[comboId];
+        Helping storage helping = combo.helpings[owner];
+        exists = helping.exists;
+        isDoubleHelping = helping.helpingType == HelpingType.DoubleHelping;
+        usingCredits = helping.usingCredits;
+        premium = PriQueue.getByAddress(combo.queue, owner).priority;
     }
 
     function deposit() public payable {
