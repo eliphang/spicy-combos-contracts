@@ -56,8 +56,8 @@ contract SpicyCombos is Ownable {
     error NotEnoughAvailableDeposits(uint256 availableDeposits, uint256 comboPrice);
     error NotEnoughAvailableDepositsForPremium(uint256 availableDeposits);
     error WithdrawAmountExceedsAvailableDeposits(uint256 availableDeposits);
-    error FirstOnlyIncompatibleWithUseCredits();
-    error FirstOnlyUnsuccessful();
+    error CreatorOnlyIncompatibleWithUseCredits();
+    error CreatorOnlyUnsuccessful();
     error HelpingNotFoundForCaller();
     error CannotIncreasePremiumOfActiveHelping();
     error RemovingActiveTimedHelpingNotAllowed();
@@ -119,7 +119,7 @@ contract SpicyCombos is Ownable {
     /// @param blocksZeros number of zeros to add to the number of blocks.
     /// @param doubleHelping Is this a double helping? If not, it's a timed helping.
     /// @param usingCredits Use credits instead of deposits for the base combo price (not including premium).
-    /// @param firstOnly Use this if you want a first place bonus and fail (revert) if you don't get it.
+    /// @param creatorOnly Use this if you want a creator bonus. The call will fail if you don't get a creator bonus.
     /// @param premium the amount paid to advance in the queue. This can only come from deposits, not credits.
     function addHelping(
         uint256 amountDigit1,
@@ -130,7 +130,7 @@ contract SpicyCombos is Ownable {
         uint256 blocksZeros,
         bool doubleHelping,
         bool usingCredits,
-        bool firstOnly,
+        bool creatorOnly,
         uint256 premium
     )
         external
@@ -165,8 +165,8 @@ contract SpicyCombos is Ownable {
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         if (usingCredits) {
-            if (firstOnly) {
-                revert FirstOnlyIncompatibleWithUseCredits();
+            if (creatorOnly) {
+                revert CreatorOnlyIncompatibleWithUseCredits();
             }
             if (balance.availableCredits < comboPrice) {
                 revert NotEnoughAvailableCredits(balance.availableCredits, comboPrice);
@@ -196,19 +196,20 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
-        if (combo.activeHelping.exists) {
-            if (firstOnly) revert FirstOnlyUnsuccessful();
-            ++combo.activeHelping.depositsReceived;
-            removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit); // Transferring the reward may cause the active double helping to expire.
-        } else {
-            // deposits received while this was the active helping. Start this at 1 to enable the first place bonus.
-            // See https://github.com/eliphang/spicy-combos/blob/main/README.md#first-place-bonus .
-            helping.depositsReceived = 1;
+        if (!usingCredits) {
+            if (combo.activeHelping.exists) {
+                if (creatorOnly) revert CreatorOnlyUnsuccessful();
+                ++combo.activeHelping.depositsReceived;
+                removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit); // Transferring the reward may cause the active double helping to expire.
+            } else {
+                // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
+                // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
+                helping.depositsReceived = 1;
+            }
         }
 
         combo.helpings[msg.sender] = helping;
 
-        // Check if the reward transfer removed the active helping.
         if (combo.activeHelping.exists) {
             QueueEntry memory entry = QueueEntry({addr: msg.sender, priority: premium});
             PriQueue.insert(combo.queue, entry);
