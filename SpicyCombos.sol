@@ -291,7 +291,7 @@ contract SpicyCombos is Ownable {
             balance.availableDeposits -= amount;
         }
 
-        payable(msg.sender).transfer(amount);
+        msg.sender.call{value: amount}(""); 
     }
 
     /// Remove your helping from a queue, or remove an active double helping.
