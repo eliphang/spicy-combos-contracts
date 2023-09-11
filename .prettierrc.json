@@ -28,7 +28,9 @@
     },
     {
       "files": "*.js",
-      "options": {}
+      "options": {
+        "tabWidth": 2
+      }
     },
     {
       "files": "*.ts",
