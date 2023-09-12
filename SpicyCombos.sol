@@ -529,7 +529,7 @@ contract SpicyCombos is Ownable {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
             combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.
-        }
+        } else delete combo.activeHelping;
 
         emit HelpingRemoved(comboId, owner);
     }
