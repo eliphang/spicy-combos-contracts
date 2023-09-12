@@ -146,11 +146,11 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
+        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
         Combo storage combo = combos[comboId];
 
-        if(combo.helpings[msg.sender].exists) revert YouAlreadyHaveAHelping();
+        if (combo.helpings[msg.sender].exists) revert YouAlreadyHaveAHelping();
 
         // Update caller's balance.
 
@@ -260,7 +260,7 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
+        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         Combo storage combo = combos[comboId];
@@ -317,8 +317,8 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
+        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
 
         Combo storage combo = combos[comboId];
         if (!combo.helpings[msg.sender].exists) revert HelpingNotFoundForCaller();
@@ -439,7 +439,7 @@ contract SpicyCombos is Ownable {
         if (helping.exists) {
             isDoubleHelping = helping.helpingType == HelpingType.DoubleHelping;
             usingCredits = helping.usingCredits;
-            if(!isActiveHelping){
+            if (!isActiveHelping) {
                 premium = PriQueue.getByAddress(combo.queue, owner).priority;
             }
         }

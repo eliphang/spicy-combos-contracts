@@ -7,7 +7,7 @@ const {
 
 describe('deploy SpicyCombos contract', function () {
     var sc, signers
-    const minValue = parseEther('.00001')
+    const minValue = parseEther('.000001')
 
     before(async function () {
         signers = await ethers.getSigners()
@@ -20,6 +20,15 @@ describe('deploy SpicyCombos contract', function () {
     it('minValue from getter should equal minValue supplied to constructor', async function () {
         const minValueFromContract = await sc.minValue()
         expect(minValueFromContract).to.equal(minValue)
+    })
+
+    describe('attempting to get comboInfo() for a combo with values out of range', async function () {
+        it("should revert with a ValueOutOfRange error", async function () {
+            await sc.comboInfo(0, 0, 0, 0, 0, 0).catch(e => {
+                expect(e.errorName).to.equal('ValueOutOfRange')
+                expect(e.errorArgs[0]).to.equal('amountDigit1')
+            })
+        })
     })
 
     describe('deposit()', function () {
@@ -136,6 +145,68 @@ describe('deploy SpicyCombos contract', function () {
                 blocksZeros
             )
             expect(activeHelpingOwner).to.equal(owner.address)
+        })
+
+        it('attempting to add a helping without enough deposits should return a "NotEnoughAvailableDeposits" error', async function () {
+            const [, addr1] = signers
+            const doubleHelping = true
+            const usingCredits = false
+            const creatorOnly = false
+            const zeroPremium = 0
+            var NotEnoughAvailableDeposits
+            await sc
+                .connect(addr1)
+                .addHelping(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros,
+                    doubleHelping,
+                    usingCredits,
+                    creatorOnly,
+                    zeroPremium,
+                    { value: parseEther('.24') }
+                ).catch(e => {
+                    // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
+                    NotEnoughAvailableDeposits = true;
+                })
+            expect(NotEnoughAvailableDeposits).to.be.true;
+        })
+
+        it('attempting to add a creator helping when there\'s already an active helping should return a "CreatorOnlyUnsuccessful" error', async function () {
+            const [, addr1] = signers
+            const doubleHelping = true
+            const usingCredits = false
+            const creatorOnly = true
+            const zeroPremium = 0
+            var CreatorOnlyUnsuccessful
+            await sc
+                .connect(addr1)
+                .addHelping(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros,
+                    doubleHelping,
+                    usingCredits,
+                    creatorOnly,
+                    zeroPremium,
+                    { value: parseEther('.25') }
+                ).catch(e => {
+                    // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
+                    CreatorOnlyUnsuccessful = true;
+                })
+            expect(CreatorOnlyUnsuccessful).to.be.true;
+        })
+
+        describe("addHelping() after an active creator helping", function () {
+            before(async function () {
+
+            })
         })
     })
 })
