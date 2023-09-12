@@ -392,7 +392,7 @@ contract SpicyCombos is Ownable {
         );
         Combo storage combo = combos[comboId];
         Helping storage activeHelping = combo.activeHelping;
-        queueLength = PriQueue.size(combo.queue);
+        queueLength = PriQueue.length(combo.queue);
         if (queueLength != 0) premium = PriQueue.getFirst(combo.queue).priority;
         activeHelpingExists = activeHelping.exists;
         activeHelpingOwner = activeHelping.owner;
@@ -525,7 +525,7 @@ contract SpicyCombos is Ownable {
 
         delete combo.helpings[owner];
         // If there's a queue, remove the first entry and make it the new active helping.
-        if (PriQueue.size(combo.queue) != 0) {
+        if (PriQueue.length(combo.queue) != 0) {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
             combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.

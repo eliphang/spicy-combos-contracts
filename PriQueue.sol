@@ -18,10 +18,10 @@ library PriQueue {
     uint256 constant ROOT_INDEX = 1;
 
     function insert(QueueData storage self, QueueEntry memory node) internal {
-        if (self.nodes.length == 0) {
+        self.nodes.push(QueueEntry(address(0), 0)); // Create a new spot in the heap.
+        if (self.nodes.length == 1) {
             self.nodes.push(node);
         } else {
-            self.nodes.push(QueueEntry(address(0), 0)); // Create a new spot in the heap.
             _siftUp(self, node, self.nodes.length - 1); // Sift up the new node, also filling in the new spot.
         }
     }
@@ -54,11 +54,7 @@ library PriQueue {
         return self.nodes;
     }
 
-    function getByAddress(QueueData storage self, address addr)
-        internal
-        view
-        returns (QueueEntry storage)
-    {
+    function getByAddress(QueueData storage self, address addr) internal view returns (QueueEntry storage) {
         return self.nodes[self.addrToNodeIndex[addr]];
     }
 
@@ -66,7 +62,7 @@ library PriQueue {
         return self.nodes[ROOT_INDEX];
     }
 
-    function size(QueueData storage self) internal view returns (uint256) {
+    function length(QueueData storage self) internal view returns (uint256) {
         return self.nodes.length > 0 ? self.nodes.length - 1 : 0;
     }
 
@@ -75,10 +71,7 @@ library PriQueue {
         QueueEntry memory node,
         uint256 nodeIndex
     ) private {
-        if (
-            nodeIndex == ROOT_INDEX ||
-            node.priority <= self.nodes[nodeIndex / 2].priority
-        ) {
+        if (nodeIndex == ROOT_INDEX || node.priority <= self.nodes[nodeIndex / 2].priority) {
             _insert(self, node, nodeIndex);
         } else {
             _insert(self, self.nodes[nodeIndex / 2], nodeIndex);
@@ -91,17 +84,14 @@ library PriQueue {
         QueueEntry memory node,
         uint256 nodeIndex
     ) private {
-        uint256 length = self.nodes.length;
+        uint256 size = self.nodes.length;
         uint256 childIndex = nodeIndex * 2;
 
-        if (length <= childIndex) {
+        if (size <= childIndex) {
             _insert(self, node, nodeIndex);
         } else {
             QueueEntry memory largestChild = self.nodes[childIndex];
-            if (
-                length > childIndex + 1 &&
-                self.nodes[childIndex + 1].priority > largestChild.priority
-            ) {
+            if (size > childIndex + 1 && self.nodes[childIndex + 1].priority > largestChild.priority) {
                 largestChild = self.nodes[++childIndex];
             }
             if (largestChild.priority <= node.priority) {
