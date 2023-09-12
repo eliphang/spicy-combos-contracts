@@ -291,7 +291,7 @@ contract SpicyCombos is Ownable {
             balance.availableDeposits -= amount;
         }
 
-        msg.sender.call{value: amount}(""); 
+        msg.sender.call{value: amount}("");
     }
 
     /// Remove your helping from a queue, or remove an active double helping.
@@ -390,7 +390,7 @@ contract SpicyCombos is Ownable {
         Combo storage combo = combos[comboId];
         Helping storage activeHelping = combo.activeHelping;
         queueLength = PriQueue.size(combo.queue);
-        premium = PriQueue.getFirst(combo.queue).priority;
+        if (queueLength != 0) premium = PriQueue.getFirst(combo.queue).priority;
         activeHelpingExists = activeHelping.exists;
         activeHelpingOwner = activeHelping.owner;
         activeHelpingIsDoubleHelping = activeHelping.helpingType == HelpingType.DoubleHelping;
@@ -416,6 +416,7 @@ contract SpicyCombos is Ownable {
             bool exists,
             bool isDoubleHelping,
             bool usingCredits,
+            bool isActiveHelping,
             uint256 premium
         )
     {
@@ -430,9 +431,15 @@ contract SpicyCombos is Ownable {
         Combo storage combo = combos[comboId];
         Helping storage helping = combo.helpings[owner];
         exists = helping.exists;
-        isDoubleHelping = helping.helpingType == HelpingType.DoubleHelping;
-        usingCredits = helping.usingCredits;
-        premium = PriQueue.getByAddress(combo.queue, owner).priority;
+        isActiveHelping = combo.activeHelping.owner == owner;
+
+        if (helping.exists) {
+            isDoubleHelping = helping.helpingType == HelpingType.DoubleHelping;
+            usingCredits = helping.usingCredits;
+            if(!isActiveHelping){
+                premium = PriQueue.getByAddress(combo.queue, owner).priority;
+            }
+        }
     }
 
     function deposit() public payable {
@@ -502,7 +509,7 @@ contract SpicyCombos is Ownable {
                 // dev fund gets 10% of deposits after the first
                 devFund += (earnedAmount - comboPrice) / 10;
                 // we get 100% of the first deposit and 90% of each one after that
-                earnedAmount = comboPrice + (earnedAmount - comboPrice) * 9 / 10;
+                earnedAmount = comboPrice + ((earnedAmount - comboPrice) * 9) / 10;
             }
             balance.availableDeposits += earnedAmount;
         }
