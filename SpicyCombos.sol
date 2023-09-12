@@ -61,6 +61,7 @@ contract SpicyCombos is Ownable {
     error HelpingNotFoundForCaller();
     error CannotIncreasePremiumOfActiveHelping();
     error RemovingActiveTimedHelpingNotAllowed();
+    error YouAlreadyHaveAHelping();
 
     modifier comboValuesInRange(
         uint256 amountDigit1,
@@ -137,6 +138,20 @@ contract SpicyCombos is Ownable {
         payable
         comboValuesInRange(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
     {
+        uint256 comboId = computeComboId(
+            amountDigit1,
+            amountDigit2,
+            amountZeros,
+            blocksDigit1,
+            blocksDigit2,
+            blocksZeros
+        );
+        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
+        uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
+        Combo storage combo = combos[comboId];
+
+        if(combo.helpings[msg.sender].exists) revert YouAlreadyHaveAHelping();
+
         // Update caller's balance.
 
         Balance storage balance = balances[msg.sender];
@@ -152,17 +167,6 @@ contract SpicyCombos is Ownable {
         }
 
         devFund += premium;
-
-        uint256 comboId = computeComboId(
-            amountDigit1,
-            amountDigit2,
-            amountZeros,
-            blocksDigit1,
-            blocksDigit2,
-            blocksZeros
-        );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros);
-        uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         if (usingCredits) {
             if (creatorOnly) {
@@ -184,7 +188,6 @@ contract SpicyCombos is Ownable {
 
         // Update queue.
 
-        Combo storage combo = combos[comboId];
         removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit);
 
         Helping memory helping = Helping({
