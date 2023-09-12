@@ -25,15 +25,16 @@ describe('deploy SpicyCombos contract', function () {
     describe('deposit()', function () {
         var oldBalance, newBalance, gasCost
         const depositAmount = parseEther('2')
-        const effectiveGasPrice = 1
 
         before(async function () {
             const [owner] = signers
+            console.log('owner', owner);
             oldBalance = await owner.getBalance()
+            const gasPrice = await owner.getGasPrice()
             console.log(`old balance ${oldBalance}`);
             const transaction = await sc.connect(owner).deposit({ value: depositAmount })
             const receipt = await transaction.wait()
-            gasCost = receipt.gasUsed.mul(effectiveGasPrice)
+            gasCost = receipt.gasUsed.mul(gasPrice)
             newBalance = await owner.getBalance()
             console.log(`new balance ${newBalance}`);
         })
@@ -48,7 +49,7 @@ describe('deploy SpicyCombos contract', function () {
         })
     })
 
-    describe("addHelping(), creating 'Burning Chili Tacos with Spicy Cactus Nachos'", function () {
+    describe('addHelping(), creating "Burning Chili Tacos with Spicy Cactus Nachos"', function () {
         // .25 eth  "Burning Chili Tacos"
         const amountDigit1 = 2
         const amountDigit2 = 5
