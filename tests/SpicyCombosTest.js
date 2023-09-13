@@ -115,7 +115,7 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(1),
-                    { value: parseEther('.26') }
+                    { value: comboPrice.add(premium(1)) }
                 )
         })
         it('the active helping owner should be us', async function () {
@@ -161,7 +161,7 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(0),
-                    { value: parseEther('.24') }
+                    { value: comboPrice.div(2) }
                 )
                 .catch((e) => {
                     // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
@@ -188,7 +188,7 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(0),
-                    { value: parseEther('.25') }
+                    { value: comboPrice }
                 )
                 .catch((e) => {
                     // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
@@ -229,7 +229,7 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(0),
-                        { value: parseEther('.25') }
+                        { value: comboPrice }
                     )
             })
             it('should result in our helping being the active helping', async function () {
@@ -324,7 +324,7 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(3),
-                        { value: parseEther('.28') }
+                        { value: comboPrice.add(premium(3)) }
                     )
             })
             it('should result in a queue of length one', async function () {
@@ -405,7 +405,7 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(4),
-                        { value: parseEther('.29') }
+                        { value: comboPrice.add(premium(4)) }
                     )
             })
             it('should result in a queue of length one', async function () {
@@ -455,7 +455,7 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(5),
-                        { value: parseEther('.3') }
+                        { value: comboPrice.add(premium(5)) }
                     )
             })
             it('should move our helping into the front of the queue', async function () {
@@ -520,6 +520,63 @@ describe('deploy SpicyCombos contract', function () {
                 const [, , , , account5] = signers
                 const { 2: availableCredits } = await sc.balances(account5.address)
                 expect(availableCredits).to.equal(comboPrice)
+            })
+        })
+        describe('addHelping() with credits', function () {
+            var oldActiveHelpingDeposits, newActiveHelpingDeposits
+
+            before(async function () {
+                const [, , , , account5] = signers
+                const doubleHelping = true
+                const usingCredits = true
+                const creatorOnly = false
+                    ; ({ 5: oldActiveHelpingDeposits } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    ))
+                await sc
+                    .connect(account5)
+                    .addHelping(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros,
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium(6),
+                        { value: premium(6) }
+                    )
+                    ; ({ 5: newActiveHelpingDeposits } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    ))
+            })
+            it('should not give a deposit to the active helping', function () {
+                expect(oldActiveHelpingDeposits).to.equal(newActiveHelpingDeposits);
+            })
+            it('helpingInfo() should say the helping is usingCredits', async function () {
+                const [, , , , account5] = signers
+                const { 2: usingCredits } = await sc.helpingInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros,
+                    account5.address
+                );
+                expect(usingCredits).to.be.true
             })
         })
     })
