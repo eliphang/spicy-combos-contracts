@@ -11,7 +11,6 @@ describe('deploy SpicyCombos contract', function () {
 
     before(async function () {
         signers = await ethers.getSigners()
-
         const SpicyCombos = await ethers.getContractFactory('SpicyCombos')
         sc = await SpicyCombos.deploy(minValue)
         await sc.deployed()
@@ -79,16 +78,16 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
     })
-    describe('addHelping(), creating "Burning Chili Tacos with Spicy Cactus Nachos"', function () {
+    describe('addHelping(), creating "Burning Chili Tacos"', function () {
         // .25 eth  "Burning Chili Tacos"
         const amountDigit1 = 2
         const amountDigit2 = 5
         const amountZeros = 4
 
-        // 150 block time limit "Spicy Cactus Nachos"
+        // adjust the block time limit to experiment with timed helpings
         const blocksDigit1 = 1
         const blocksDigit2 = 5
-        const blocksZeros = 1
+        const blocksZeros = 0
 
         var comboPrice
 
@@ -407,6 +406,8 @@ describe('deploy SpicyCombos contract', function () {
                         premium(4),
                         { value: comboPrice.add(premium(4)) }
                     )
+                const block = await ethers.provider.getBlockNumber()
+                console.log('block number', block)
             })
             it('should result in a queue of length one', async function () {
                 const { 0: queueLength } = await sc.comboInfo(
@@ -476,6 +477,8 @@ describe('deploy SpicyCombos contract', function () {
             const newPremium = oldPremium.add(increaseByAmount)
 
             before(async function () {
+                const block = await ethers.provider.getBlockNumber()
+                console.log('block number', block)
                 const [, , , account4] = signers
                 await sc
                     .connect(account4)
@@ -660,6 +663,8 @@ describe('deploy SpicyCombos contract', function () {
                 expect(owner).to.equal(account3.address)
             })
             it('should report three deposits', async function () {
+                const block = await ethers.provider.getBlockNumber()
+                console.log('block number', block)
                 const { 5: deposits } = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
