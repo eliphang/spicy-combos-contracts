@@ -118,22 +118,6 @@ describe('deploy SpicyCombos contract', function () {
                     { value: parseEther('.26') }
                 )
         })
-
-        describe('withdrawDevFund()', function () {
-            var oldDevFundAmount, newDevFundAmount
-
-            before(async function () {
-                const [owner, account2] = signers
-                oldDevFundAmount = await owner.getBalance()
-                await sc.connect(account2).withdrawDevFund()
-                newDevFundAmount = await owner.getBalance()
-            })
-
-            it('the dev fund should increase by the premium deposited', function () {
-                expect(oldDevFundAmount.add(premium1)).to.equal(newDevFundAmount)
-            })
-        })
-
         it('the active helping owner should be us', async function () {
             const [owner] = signers
             const { 3: activeHelpingOwner } = await sc.comboInfo(
@@ -146,7 +130,6 @@ describe('deploy SpicyCombos contract', function () {
             )
             expect(activeHelpingOwner).to.equal(owner.address)
         })
-
         it('our helping should have the creator bonus (1 deposit)', async function () {
             const [owner] = signers
             const { 5: activeHelpingDeposits } = await sc.comboInfo(
@@ -159,7 +142,6 @@ describe('deploy SpicyCombos contract', function () {
             )
             expect(activeHelpingDeposits).to.equal(1)
         })
-
         it('attempting to add a helping without enough deposits should return a "NotEnoughAvailableDeposits" error', async function () {
             const [, account2] = signers
             const doubleHelping = true
@@ -188,7 +170,6 @@ describe('deploy SpicyCombos contract', function () {
                 })
             expect(NotEnoughAvailableDeposits).to.be.true
         })
-
         it('attempting to add a creator helping when there\'s already an active helping should return a "CreatorOnlyUnsuccessful" error', async function () {
             const [, account2] = signers
             const doubleHelping = true
@@ -217,7 +198,20 @@ describe('deploy SpicyCombos contract', function () {
                 })
             expect(CreatorOnlyUnsuccessful).to.be.true
         })
+        describe('withdrawDevFund()', function () {
+            var oldDevFundAmount, newDevFundAmount
 
+            before(async function () {
+                const [owner, account2] = signers
+                oldDevFundAmount = await owner.getBalance()
+                await sc.connect(account2).withdrawDevFund()
+                newDevFundAmount = await owner.getBalance()
+            })
+
+            it('the dev fund should increase by the premium deposited', function () {
+                expect(oldDevFundAmount.add(premium1)).to.equal(newDevFundAmount)
+            })
+        })
         describe('addHelping() the only helping after an active creator helping', function () {
             before(async function () {
                 const [, account2] = signers
@@ -318,7 +312,7 @@ describe('deploy SpicyCombos contract', function () {
 
                 before(async function () {
                     const [, , account3] = signers
-                    const doubleHelping = true
+                    const doubleHelping = false
                     const usingCredits = false
                     const creatorOnly = false
                     premium3 = parseEther('.03');
@@ -443,6 +437,11 @@ describe('deploy SpicyCombos contract', function () {
                         blocksZeros
                     )
                     expect(premium).to.equal(premium4)
+                })
+                it('the previous active helping owner should have doubled their available deposits', async function (){
+                    const [, account2] = signers
+                    const { 0: availableDeposits } = await sc.balances(account2.address)
+                    expect(availableDeposits).to.equal(5)
                 })
             })
         })
