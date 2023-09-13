@@ -100,7 +100,7 @@ describe('deploy SpicyCombos contract', function () {
             const usingCredits = false
             const creatorOnly = true
 
-            comboPrice = await sc.computeValue(amountDigit1, amountDigit2, amountZeros)
+            comboPrice = await sc.computePrice(amountDigit1, amountDigit2, amountZeros)
 
             await sc
                 .connect(owner)
@@ -433,7 +433,7 @@ describe('deploy SpicyCombos contract', function () {
             it('the previous active helping owner should have doubled their available deposits', async function () {
                 const [, account2] = signers
                 const { 0: availableDeposits } = await sc.balances(account2.address)
-                expect(availableDeposits).to.equal(comboPrice.mul(minValue).mul(2))
+                expect(availableDeposits).to.equal(comboPrice.mul(2))
             })
         })
         describe('addHelping() with the highest current premium', function () {

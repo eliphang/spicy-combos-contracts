@@ -146,7 +146,7 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
+        uint256 comboPrice = computePrice(amountDigit1, amountDigit2, amountZeros);
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
         Combo storage combo = combos[comboId];
 
@@ -205,7 +205,7 @@ contract SpicyCombos is Ownable {
                 if (creatorOnly) revert CreatorOnlyUnsuccessful();
                 ++combo.activeHelping.depositsReceived;
                 // Awarding the deposit may have caused the active double helping to expire.
-                removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit); 
+                removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit);
             } else {
                 // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
                 // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
@@ -262,7 +262,7 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
+        uint256 comboPrice = computePrice(amountDigit1, amountDigit2, amountZeros);
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         Combo storage combo = combos[comboId];
@@ -319,7 +319,7 @@ contract SpicyCombos is Ownable {
             blocksDigit2,
             blocksZeros
         );
-        uint256 comboPrice = computeValue(amountDigit1, amountDigit2, amountZeros) * minValue;
+        uint256 comboPrice = computePrice(amountDigit1, amountDigit2, amountZeros);
         uint256 timeLimit = computeValue(blocksDigit1, blocksDigit2, blocksZeros);
 
         Combo storage combo = combos[comboId];
@@ -483,6 +483,14 @@ contract SpicyCombos is Ownable {
             return digit1 * 10**zeros;
         }
         return (digit1 * 10 + digit2) * 10**zeros;
+    }
+
+    function computePrice(
+        uint256 digit1,
+        uint256 digit2,
+        uint256 zeros
+    ) public view returns (uint256) {
+        return computeValue(digit1, digit2, zeros) * minValue;
     }
 
     function removeActiveHelpingIfExpired(

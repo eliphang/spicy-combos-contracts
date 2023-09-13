@@ -3,7 +3,7 @@
     "settings": {
         "optimizer": {
             "enabled": true,
-            "runs": 2000000000
+            "runs": 200000
         },
         "viaIR": true,
         "outputSelection": {
