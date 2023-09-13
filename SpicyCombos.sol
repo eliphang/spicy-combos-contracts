@@ -224,7 +224,7 @@ contract SpicyCombos is Ownable {
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
-    /// @param increaseAmount the amount to increase the premium by.
+    /// @param increaseByAmount the amount to increase the premium by.
     function increasePremium(
         uint256 amountDigit1,
         uint256 amountDigit2,
@@ -232,7 +232,7 @@ contract SpicyCombos is Ownable {
         uint256 blocksDigit1,
         uint256 blocksDigit2,
         uint256 blocksZeros,
-        uint256 increaseAmount
+        uint256 increaseByAmount
     )
         external
         payable
@@ -242,15 +242,15 @@ contract SpicyCombos is Ownable {
         // Make sure increasePremium() never calls an outside function or there could be a reentrancy attack.
         balance.availableDeposits += msg.value;
 
-        if (balance.availableDeposits < increaseAmount) {
+        if (balance.availableDeposits < increaseByAmount) {
             revert NotEnoughAvailableDepositsForPremium(balance.availableDeposits);
         }
 
         unchecked {
-            balance.availableDeposits -= increaseAmount;
+            balance.availableDeposits -= increaseByAmount;
         }
 
-        devFund += increaseAmount;
+        devFund += increaseByAmount;
 
         uint256 comboId = computeComboId(
             amountDigit1,
@@ -276,7 +276,7 @@ contract SpicyCombos is Ownable {
 
         // Remove the helping from the queue and re-add it with the new priority.
         QueueEntry memory entry = PriQueue.removeQueueEntry(combo.queue, msg.sender);
-        entry.priority += increaseAmount;
+        entry.priority += increaseByAmount;
         PriQueue.insert(combo.queue, entry);
 
         emit PremiumIncreased(comboId, msg.sender, entry.priority);

@@ -92,7 +92,7 @@ describe('deploy SpicyCombos contract', function () {
 
         var comboPrice;
 
-        const premium1 = parseEther('.01')
+        const premium = x => parseEther((.01 * x) + '')
 
         before(async function () {
             const [owner] = signers
@@ -114,7 +114,7 @@ describe('deploy SpicyCombos contract', function () {
                     doubleHelping,
                     usingCredits,
                     creatorOnly,
-                    premium1,
+                    parseEther('0.01'),
                     { value: parseEther('.26') }
                 )
         })
@@ -147,7 +147,6 @@ describe('deploy SpicyCombos contract', function () {
             const doubleHelping = true
             const usingCredits = false
             const creatorOnly = false
-            const zeroPremium = 0
             var NotEnoughAvailableDeposits
             await sc
                 .connect(account2)
@@ -161,7 +160,7 @@ describe('deploy SpicyCombos contract', function () {
                     doubleHelping,
                     usingCredits,
                     creatorOnly,
-                    zeroPremium,
+                    premium(0),
                     { value: parseEther('.24') }
                 )
                 .catch((e) => {
@@ -175,7 +174,6 @@ describe('deploy SpicyCombos contract', function () {
             const doubleHelping = true
             const usingCredits = false
             const creatorOnly = true
-            const zeroPremium = 0
             var CreatorOnlyUnsuccessful
             await sc
                 .connect(account2)
@@ -189,7 +187,7 @@ describe('deploy SpicyCombos contract', function () {
                     doubleHelping,
                     usingCredits,
                     creatorOnly,
-                    zeroPremium,
+                    premium(0),
                     { value: parseEther('.25') }
                 )
                 .catch((e) => {
@@ -218,7 +216,6 @@ describe('deploy SpicyCombos contract', function () {
                 const doubleHelping = true
                 const usingCredits = false
                 const creatorOnly = false
-                const zeroPremium = 0
                 await sc
                     .connect(account2)
                     .addHelping(
@@ -231,7 +228,7 @@ describe('deploy SpicyCombos contract', function () {
                         doubleHelping,
                         usingCredits,
                         creatorOnly,
-                        zeroPremium,
+                        premium(0),
                         { value: parseEther('.25') }
                     )
             })
@@ -309,14 +306,11 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
         describe('addHelping() first helping after a non-creator helping', function () {
-            var premium3
-
             before(async function () {
                 const [, , account3] = signers
                 const doubleHelping = false
                 const usingCredits = false
                 const creatorOnly = false
-                premium3 = parseEther('.03');
                 await sc
                     .connect(account3)
                     .addHelping(
@@ -329,7 +323,7 @@ describe('deploy SpicyCombos contract', function () {
                         doubleHelping,
                         usingCredits,
                         creatorOnly,
-                        premium3,
+                        premium(3),
                         { value: parseEther('.28') }
                     )
             })
@@ -357,7 +351,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(activeHelpingOwner).to.not.equal(account3.address)
             })
             it('the premium of the first queue entry should be our premium', async function () {
-                const { 1: premium } = await sc.comboInfo(
+                const { 1: premium_ } = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -365,7 +359,7 @@ describe('deploy SpicyCombos contract', function () {
                     blocksDigit2,
                     blocksZeros
                 )
-                expect(premium).to.equal(premium3)
+                expect(premium_).to.equal(premium(3))
             })
             it('our helping should exist', async function () {
                 const [, , account3] = signers
@@ -393,14 +387,11 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
         describe('addHelping() the second helping after a non-creator double helping', function () {
-            var premium4
-
             before(async function () {
                 const [, , , account4] = signers
                 const doubleHelping = true
                 const usingCredits = false
                 const creatorOnly = false
-                premium4 = parseEther('.04');
                 await sc
                     .connect(account4)
                     .addHelping(
@@ -413,7 +404,7 @@ describe('deploy SpicyCombos contract', function () {
                         doubleHelping,
                         usingCredits,
                         creatorOnly,
-                        premium4,
+                        premium(4),
                         { value: parseEther('.29') }
                     )
             })
@@ -443,6 +434,63 @@ describe('deploy SpicyCombos contract', function () {
                 const [, account2] = signers
                 const { 0: availableDeposits } = await sc.balances(account2.address)
                 expect(availableDeposits).to.equal(comboPrice.mul(minValue).mul(2))
+            })
+        })
+        describe('addHelping() with the highest current premium', function () {
+            var premium5
+
+            before(async function () {
+                const [, , , , account5] = signers
+                const doubleHelping = true
+                const usingCredits = false
+                const creatorOnly = false
+                await sc
+                    .connect(account5)
+                    .addHelping(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros,
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium(5),
+                        { value: parseEther('.3') }
+                    )
+            })
+            it('should move our helping into the front of the queue', async function () {
+                const { 1: premium_ } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(premium).to.equal(premium(5))
+            })
+        })
+        describe('increasePremium() to new high', function () {
+            const oldPremium = premium(4)
+            const increaseAmount = parseEther('.01444')
+            const newPremium = oldPremium.add(increaseAmount)
+
+            before(async function () {
+                await sc
+                    .connect(account4)
+                    .increasePremium(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros,
+                        doubleHelping,
+                        increaseAmount,
+                        { value: increaseAmount }
+                    )
             })
         })
     })
