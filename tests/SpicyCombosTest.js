@@ -1,8 +1,8 @@
-import { expect } from 'chai'
-import { ethers } from 'hardhat'
+import {expect} from 'chai'
+import {ethers} from 'hardhat'
 
 const {
-    utils: { parseEther },
+    utils: {parseEther},
 } = ethers
 
 describe('deploy SpicyCombos contract', function () {
@@ -38,7 +38,7 @@ describe('deploy SpicyCombos contract', function () {
             oldBalance = await owner.getBalance()
             const gasPrice = await owner.getGasPrice()
             console.log(`old balance ${oldBalance}`)
-            const transaction = await sc.connect(owner).deposit({ value: depositAmount })
+            const transaction = await sc.connect(owner).deposit({value: depositAmount})
             const receipt = await transaction.wait()
             gasCost = receipt.gasUsed.mul(gasPrice)
             newBalance = await owner.getBalance()
@@ -47,7 +47,7 @@ describe('deploy SpicyCombos contract', function () {
         it('available deposits should equal deposited amount', async function () {
             const [owner] = signers
             const addr = owner.address
-            const { 0: availableDeposits } = await sc.balances(addr)
+            const {0: availableDeposits} = await sc.balances(addr)
             expect(availableDeposits).to.equal(depositAmount)
         })
         it('outside eth balance should decrease by deposited amount', function () {
@@ -71,7 +71,7 @@ describe('deploy SpicyCombos contract', function () {
             it('available deposits should equal zero', async function () {
                 const [owner] = signers
                 const addr = owner.address
-                const { 0: availableDeposits } = await sc.balances(addr)
+                const {0: availableDeposits} = await sc.balances(addr)
                 expect(availableDeposits).to.equal(0)
             })
             it('outside eth balance should increase by withdrawn amount', function () {
@@ -90,9 +90,9 @@ describe('deploy SpicyCombos contract', function () {
         const blocksDigit2 = 5
         const blocksZeros = 1
 
-        var comboPrice;
+        var comboPrice
 
-        const premium = x => parseEther((.01 * x) + '')
+        const premium = (x) => parseEther(0.01 * x + '')
 
         before(async function () {
             const [owner] = signers
@@ -100,7 +100,7 @@ describe('deploy SpicyCombos contract', function () {
             const usingCredits = false
             const creatorOnly = true
 
-            comboPrice = await sc.computeValue(amountDigit1, amountDigit2, amountZeros);
+            comboPrice = await sc.computeValue(amountDigit1, amountDigit2, amountZeros)
 
             await sc
                 .connect(owner)
@@ -115,12 +115,12 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(1),
-                    { value: parseEther('.26') }
+                    {value: parseEther('.26')}
                 )
         })
         it('the active helping owner should be us', async function () {
             const [owner] = signers
-            const { 3: activeHelpingOwner } = await sc.comboInfo(
+            const {3: activeHelpingOwner} = await sc.comboInfo(
                 amountDigit1,
                 amountDigit2,
                 amountZeros,
@@ -132,7 +132,7 @@ describe('deploy SpicyCombos contract', function () {
         })
         it('our helping should have the creator bonus (1 deposit)', async function () {
             const [owner] = signers
-            const { 5: activeHelpingDeposits } = await sc.comboInfo(
+            const {5: activeHelpingDeposits} = await sc.comboInfo(
                 amountDigit1,
                 amountDigit2,
                 amountZeros,
@@ -161,7 +161,7 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(0),
-                    { value: parseEther('.24') }
+                    {value: parseEther('.24')}
                 )
                 .catch((e) => {
                     // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
@@ -188,7 +188,7 @@ describe('deploy SpicyCombos contract', function () {
                     usingCredits,
                     creatorOnly,
                     premium(0),
-                    { value: parseEther('.25') }
+                    {value: parseEther('.25')}
                 )
                 .catch((e) => {
                     // todo: check e.errorName once this remix IDE bug is resolved https://github.com/ethereum/remix-project/issues/3024
@@ -229,12 +229,12 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(0),
-                        { value: parseEther('.25') }
+                        {value: parseEther('.25')}
                     )
             })
             it('should result in our helping being the active helping', async function () {
                 const [, account2] = signers
-                const { 3: activeHelpingOwner } = await sc.comboInfo(
+                const {3: activeHelpingOwner} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -245,7 +245,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(activeHelpingOwner).to.equal(account2.address)
             })
             it('the active helping should have zero deposits', async function () {
-                const { 5: activeHelpingDeposits } = await sc.comboInfo(
+                const {5: activeHelpingDeposits} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -257,7 +257,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('the queue length should still be zero', async function () {
                 const [, account2] = signers
-                const { 0: queueLength } = await sc.comboInfo(
+                const {0: queueLength} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -269,7 +269,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('our helping should exist', async function () {
                 const [, account2] = signers
-                const { 0: exists } = await sc.helpingInfo(
+                const {0: exists} = await sc.helpingInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -281,7 +281,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(exists).to.be.true
             })
             it('the active helping should not be expired', async function () {
-                const { 7: activeHelpingIsExpired } = await sc.comboInfo(
+                const {7: activeHelpingIsExpired} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -293,7 +293,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('the previous active helping should not exist', async function () {
                 const [owner] = signers
-                const { 0: exists } = await sc.helpingInfo(
+                const {0: exists} = await sc.helpingInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -324,11 +324,11 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(3),
-                        { value: parseEther('.28') }
+                        {value: parseEther('.28')}
                     )
             })
             it('should result in a queue of length one', async function () {
-                const { 0: queueLength } = await sc.comboInfo(
+                const {0: queueLength} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -340,7 +340,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('we should not be the active helping owner', async function () {
                 const [, , account3] = signers
-                const { 3: activeHelpingOwner } = await sc.comboInfo(
+                const {3: activeHelpingOwner} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -351,7 +351,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(activeHelpingOwner).to.not.equal(account3.address)
             })
             it('the premium of the first queue entry should be our premium', async function () {
-                const { 1: premium_ } = await sc.comboInfo(
+                const {1: premium_} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -363,7 +363,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('our helping should exist', async function () {
                 const [, , account3] = signers
-                const { 0: exists } = await sc.helpingInfo(
+                const {0: exists} = await sc.helpingInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -375,7 +375,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(exists).to.be.true
             })
             it('the active helping should have one deposit', async function () {
-                const { 5: activeHelpingDeposits } = await sc.comboInfo(
+                const {5: activeHelpingDeposits} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -405,11 +405,11 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(4),
-                        { value: parseEther('.29') }
+                        {value: parseEther('.29')}
                     )
             })
             it('should result in a queue of length one', async function () {
-                const { 0: queueLength } = await sc.comboInfo(
+                const {0: queueLength} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -420,7 +420,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(queueLength).to.equal(1)
             })
             it('the premium of the first queue entry should be our premium', async function () {
-                const { 1: premium_ } = await sc.comboInfo(
+                const {1: premium_} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -432,7 +432,7 @@ describe('deploy SpicyCombos contract', function () {
             })
             it('the previous active helping owner should have doubled their available deposits', async function () {
                 const [, account2] = signers
-                const { 0: availableDeposits } = await sc.balances(account2.address)
+                const {0: availableDeposits} = await sc.balances(account2.address)
                 expect(availableDeposits).to.equal(comboPrice.mul(minValue).mul(2))
             })
         })
@@ -455,11 +455,11 @@ describe('deploy SpicyCombos contract', function () {
                         usingCredits,
                         creatorOnly,
                         premium(5),
-                        { value: parseEther('.3') }
+                        {value: parseEther('.3')}
                     )
             })
             it('should move our helping into the front of the queue', async function () {
-                const { 1: premium_ } = await sc.comboInfo(
+                const {1: premium_} = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -472,10 +472,11 @@ describe('deploy SpicyCombos contract', function () {
         })
         describe('increasePremium() to new high', function () {
             const oldPremium = premium(4)
-            const increaseAmount = parseEther('.01444')
-            const newPremium = oldPremium.add(increaseAmount)
+            const increaseByAmount = parseEther('.01444')
+            const newPremium = oldPremium.add(increaseByAmount)
 
             before(async function () {
+                const [, , , account4] = signers
                 await sc
                     .connect(account4)
                     .increasePremium(
@@ -485,10 +486,20 @@ describe('deploy SpicyCombos contract', function () {
                         blocksDigit1,
                         blocksDigit2,
                         blocksZeros,
-                        doubleHelping,
-                        increaseAmount,
-                        { value: increaseAmount }
+                        increaseByAmount,
+                        {value: increaseByAmount}
                     )
+            })
+            it('should move us to the front of the queue', async function () {
+                const {1: premium_} = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(premium_).to.equal(newPremium)
             })
         })
     })
