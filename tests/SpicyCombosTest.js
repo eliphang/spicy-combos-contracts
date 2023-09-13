@@ -16,12 +16,10 @@ describe('deploy SpicyCombos contract', function () {
         sc = await SpicyCombos.deploy(minValue)
         await sc.deployed()
     })
-
     it('minValue from getter should equal minValue supplied to constructor', async function () {
         const minValueFromContract = await sc.minValue()
         expect(minValueFromContract).to.equal(minValue)
     })
-
     describe('attempting to get comboInfo() for a combo with values out of range', async function () {
         it('should revert with a ValueOutOfRange error', async function () {
             await sc.comboInfo(0, 0, 0, 0, 0, 0).catch((e) => {
@@ -30,7 +28,6 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
     })
-
     describe('deposit()', function () {
         var oldBalance, newBalance, gasCost
         const depositAmount = parseEther('2')
@@ -56,7 +53,6 @@ describe('deploy SpicyCombos contract', function () {
         it('outside eth balance should decrease by deposited amount', function () {
             expect(oldBalance.sub(depositAmount).sub(gasCost)).to.equal(newBalance)
         })
-
         describe('withdraw() what was deposited', function () {
             var oldBalance, newBalance, gasCost
 
@@ -83,7 +79,6 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
     })
-
     describe('addHelping(), creating "Burning Chili Tacos with Spicy Cactus Nachos"', function () {
         // .25 eth  "Burning Chili Tacos"
         const amountDigit1 = 2
@@ -95,6 +90,8 @@ describe('deploy SpicyCombos contract', function () {
         const blocksDigit2 = 5
         const blocksZeros = 1
 
+        var comboPrice;
+
         const premium1 = parseEther('.01')
 
         before(async function () {
@@ -102,6 +99,9 @@ describe('deploy SpicyCombos contract', function () {
             const doubleHelping = true
             const usingCredits = false
             const creatorOnly = true
+
+            comboPrice = await sc.computeValue(amountDigit1, amountDigit2, amountZeros);
+
             await sc
                 .connect(owner)
                 .addHelping(
@@ -307,142 +307,142 @@ describe('deploy SpicyCombos contract', function () {
                 )
                 expect(exists).to.be.false
             })
-            describe('addHelping() first helping after a non-creator helping', function () {
-                var premium3
+        })
+        describe('addHelping() first helping after a non-creator helping', function () {
+            var premium3
 
-                before(async function () {
-                    const [, , account3] = signers
-                    const doubleHelping = false
-                    const usingCredits = false
-                    const creatorOnly = false
-                    premium3 = parseEther('.03');
-                    await sc
-                        .connect(account3)
-                        .addHelping(
-                            amountDigit1,
-                            amountDigit2,
-                            amountZeros,
-                            blocksDigit1,
-                            blocksDigit2,
-                            blocksZeros,
-                            doubleHelping,
-                            usingCredits,
-                            creatorOnly,
-                            premium3,
-                            { value: parseEther('.28') }
-                        )
-                })
-                it('should result in a queue of length one', async function () {
-                    const { 0: queueLength } = await sc.comboInfo(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros
-                    )
-                    expect(queueLength).to.equal(1)
-                })
-                it('we should not be the active helping owner', async function () {
-                    const [, , account3] = signers
-                    const { 3: activeHelpingOwner } = await sc.comboInfo(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros
-                    )
-                    expect(activeHelpingOwner).to.not.equal(account3.address)
-                })
-                it('the premium of the first queue entry should be our premium', async function () {
-                    const { 1: premium } = await sc.comboInfo(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros
-                    )
-                    expect(premium).to.equal(premium3)
-                })
-                it('our helping should exist', async function () {
-                    const [, , account3] = signers
-                    const { 0: exists } = await sc.helpingInfo(
+            before(async function () {
+                const [, , account3] = signers
+                const doubleHelping = false
+                const usingCredits = false
+                const creatorOnly = false
+                premium3 = parseEther('.03');
+                await sc
+                    .connect(account3)
+                    .addHelping(
                         amountDigit1,
                         amountDigit2,
                         amountZeros,
                         blocksDigit1,
                         blocksDigit2,
                         blocksZeros,
-                        account3.address
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium3,
+                        { value: parseEther('.28') }
                     )
-                    expect(exists).to.be.true
-                })
-                it('the active helping should have one deposit', async function () {
-                    const { 5: activeHelpingDeposits } = await sc.comboInfo(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros
-                    )
-                    expect(activeHelpingDeposits).to.equal(1)
-                })
             })
-            describe('addHelping() the second helping after a non-creator double helping', function () {
-                var premium4
+            it('should result in a queue of length one', async function () {
+                const { 0: queueLength } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(queueLength).to.equal(1)
+            })
+            it('we should not be the active helping owner', async function () {
+                const [, , account3] = signers
+                const { 3: activeHelpingOwner } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(activeHelpingOwner).to.not.equal(account3.address)
+            })
+            it('the premium of the first queue entry should be our premium', async function () {
+                const { 1: premium } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(premium).to.equal(premium3)
+            })
+            it('our helping should exist', async function () {
+                const [, , account3] = signers
+                const { 0: exists } = await sc.helpingInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros,
+                    account3.address
+                )
+                expect(exists).to.be.true
+            })
+            it('the active helping should have one deposit', async function () {
+                const { 5: activeHelpingDeposits } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(activeHelpingDeposits).to.equal(1)
+            })
+        })
+        describe('addHelping() the second helping after a non-creator double helping', function () {
+            var premium4
 
-                before(async function () {
-                    const [, , , account4] = signers
-                    const doubleHelping = true
-                    const usingCredits = false
-                    const creatorOnly = false
-                    premium4 = parseEther('.04');
-                    await sc
-                        .connect(account4)
-                        .addHelping(
-                            amountDigit1,
-                            amountDigit2,
-                            amountZeros,
-                            blocksDigit1,
-                            blocksDigit2,
-                            blocksZeros,
-                            doubleHelping,
-                            usingCredits,
-                            creatorOnly,
-                            premium4,
-                            { value: parseEther('.29') }
-                        )
-                })
-                it('should result in a queue of length one', async function () {
-                    const { 0: queueLength } = await sc.comboInfo(
+            before(async function () {
+                const [, , , account4] = signers
+                const doubleHelping = true
+                const usingCredits = false
+                const creatorOnly = false
+                premium4 = parseEther('.04');
+                await sc
+                    .connect(account4)
+                    .addHelping(
                         amountDigit1,
                         amountDigit2,
                         amountZeros,
                         blocksDigit1,
                         blocksDigit2,
-                        blocksZeros
+                        blocksZeros,
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium4,
+                        { value: parseEther('.29') }
                     )
-                    expect(queueLength).to.equal(1)
-                })
-                it('the premium of the first queue entry should be our premium', async function () {
-                    const { 1: premium } = await sc.comboInfo(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros
-                    )
-                    expect(premium).to.equal(premium4)
-                })
-                it('the previous active helping owner should have doubled their available deposits', async function (){
-                    const [, account2] = signers
-                    const { 0: availableDeposits } = await sc.balances(account2.address)
-                    expect(availableDeposits).to.equal(5)
-                })
+            })
+            it('should result in a queue of length one', async function () {
+                const { 0: queueLength } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(queueLength).to.equal(1)
+            })
+            it('the premium of the first queue entry should be our premium', async function () {
+                const { 1: premium } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(premium).to.equal(premium4)
+            })
+            it('the previous active helping owner should have doubled their available deposits', async function () {
+                const [, account2] = signers
+                const { 0: availableDeposits } = await sc.balances(account2.address)
+                expect(availableDeposits).to.equal(comboPrice.mul(minValue).mul(2))
             })
         })
     })
