@@ -550,8 +550,8 @@ describe('deploy SpicyCombos contract', function () {
                         doubleHelping,
                         usingCredits,
                         creatorOnly,
-                        premium(6),
-                        { value: premium(6) }
+                        premium(7),
+                        { value: premium(7) }
                     )
                     ; ({ 5: newActiveHelpingDeposits } = await sc.comboInfo(
                         amountDigit1,
@@ -577,6 +577,98 @@ describe('deploy SpicyCombos contract', function () {
                     account5.address
                 );
                 expect(usingCredits).to.be.true
+            })
+            it('the queueLength should be 2', async function () {
+                const { 0: queueLength } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(queueLength).to.equal(2)
+            })
+        })
+        describe('addHelping() second deposit to an active timed helping', function () {
+            before(async function () {
+                const [, , , , , account6] = signers
+                const doubleHelping = true
+                const usingCredits = false
+                const creatorOnly = false
+                await sc
+                    .connect(account6)
+                    .addHelping(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros,
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium(0),
+                        { value: comboPrice }
+                    )
+            })
+            it('the active helping owner should be still be the timed helping owner', async function () {
+                const [, , account3] = signers
+                const { 3: owner } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(owner).to.equal(account3.address)
+            })
+        })
+        describe('addHelping() thirds deposit to an active timed helping', function () {
+            before(async function () {
+                const [, , , , , , account7] = signers
+                const doubleHelping = true
+                const usingCredits = false
+                const creatorOnly = false
+                await sc
+                    .connect(account7)
+                    .addHelping(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros,
+                        doubleHelping,
+                        usingCredits,
+                        creatorOnly,
+                        premium(0),
+                        { value: comboPrice }
+                    )
+            })
+            it('the active helping owner should be still be the timed helping owner', async function () {
+                const [, , account3] = signers
+                const { 3: owner } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(owner).to.equal(account3.address)
+            })
+            it('should report three deposits', async function () {
+                const { 5: deposits } = await sc.comboInfo(
+                    amountDigit1,
+                    amountDigit2,
+                    amountZeros,
+                    blocksDigit1,
+                    blocksDigit2,
+                    blocksZeros
+                )
+                expect(deposits).to.equal(3)
             })
         })
     })
