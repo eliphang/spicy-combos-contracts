@@ -114,7 +114,7 @@ describe('deploy SpicyCombos contract', function () {
                     doubleHelping,
                     usingCredits,
                     creatorOnly,
-                    parseEther('0.01'),
+                    premium(1),
                     { value: parseEther('.26') }
                 )
         })
@@ -207,7 +207,7 @@ describe('deploy SpicyCombos contract', function () {
             })
 
             it('the dev fund should increase by the premium deposited', function () {
-                expect(oldDevFundAmount.add(premium1)).to.equal(newDevFundAmount)
+                expect(oldDevFundAmount.add(premium(1))).to.equal(newDevFundAmount)
             })
         })
         describe('addHelping() the only helping after an active creator helping', function () {
@@ -420,7 +420,7 @@ describe('deploy SpicyCombos contract', function () {
                 expect(queueLength).to.equal(1)
             })
             it('the premium of the first queue entry should be our premium', async function () {
-                const { 1: premium } = await sc.comboInfo(
+                const { 1: premium_ } = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
                     amountZeros,
@@ -428,7 +428,7 @@ describe('deploy SpicyCombos contract', function () {
                     blocksDigit2,
                     blocksZeros
                 )
-                expect(premium).to.equal(premium4)
+                expect(premium_).to.equal(premium(4))
             })
             it('the previous active helping owner should have doubled their available deposits', async function () {
                 const [, account2] = signers
@@ -437,8 +437,6 @@ describe('deploy SpicyCombos contract', function () {
             })
         })
         describe('addHelping() with the highest current premium', function () {
-            var premium5
-
             before(async function () {
                 const [, , , , account5] = signers
                 const doubleHelping = true
@@ -469,7 +467,7 @@ describe('deploy SpicyCombos contract', function () {
                     blocksDigit2,
                     blocksZeros
                 )
-                expect(premium).to.equal(premium(5))
+                expect(premium_).to.equal(premium(5))
             })
         })
         describe('increasePremium() to new high', function () {
