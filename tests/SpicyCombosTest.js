@@ -321,7 +321,7 @@ describe('deploy SpicyCombos contract', function () {
                     const doubleHelping = true
                     const usingCredits = false
                     const creatorOnly = false
-                    premium3 = parseEther('.01');
+                    premium3 = parseEther('.03');
                     await sc
                         .connect(account3)
                         .addHelping(
@@ -335,7 +335,7 @@ describe('deploy SpicyCombos contract', function () {
                             usingCredits,
                             creatorOnly,
                             premium3,
-                            { value: parseEther('.26') }
+                            { value: parseEther('.28') }
                         )
                 })
                 it('should result in a queue of length one', async function () {
@@ -395,6 +395,54 @@ describe('deploy SpicyCombos contract', function () {
                         blocksZeros
                     )
                     expect(activeHelpingDeposits).to.equal(1)
+                })
+            })
+            describe('addHelping() the second helping after a non-creator double helping', function () {
+                var premium4
+
+                before(async function () {
+                    const [, , , account4] = signers
+                    const doubleHelping = true
+                    const usingCredits = false
+                    const creatorOnly = false
+                    premium4 = parseEther('.04');
+                    await sc
+                        .connect(account4)
+                        .addHelping(
+                            amountDigit1,
+                            amountDigit2,
+                            amountZeros,
+                            blocksDigit1,
+                            blocksDigit2,
+                            blocksZeros,
+                            doubleHelping,
+                            usingCredits,
+                            creatorOnly,
+                            premium4,
+                            { value: parseEther('.29') }
+                        )
+                })
+                it('should result in a queue of length one', async function () {
+                    const { 0: queueLength } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    )
+                    expect(queueLength).to.equal(1)
+                })
+                it('the premium of the first queue entry should be our premium', async function () {
+                    const { 1: premium } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    )
+                    expect(premium).to.equal(premium4)
                 })
             })
         })

@@ -21,14 +21,16 @@ library PriQueue {
         self.nodes.push(QueueEntry(address(0), 0)); // Create a new spot in the heap.
         if (self.nodes.length == 1) {
             self.nodes.push(node);
+            self.addrToNodeIndex[node.addr] = ROOT_INDEX;
         } else {
             _siftUp(self, node, self.nodes.length - 1); // Sift up the new node, also filling in the new spot.
         }
     }
 
     /// Remove and return the node with the highest priority
-    function removeFirst(QueueData storage self) internal returns (QueueEntry memory) {
-        return removeQueueEntry(self, self.nodes[ROOT_INDEX].addr);
+    function removeFirst(QueueData storage self) internal returns (QueueEntry memory node) {
+        node = self.nodes[ROOT_INDEX];
+        removeQueueEntry(self, node.addr);
     }
 
     function removeQueueEntry(QueueData storage self, address addr) internal returns (QueueEntry memory node) {
