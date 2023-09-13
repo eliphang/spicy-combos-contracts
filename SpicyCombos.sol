@@ -199,11 +199,13 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
+        // Calculate deposits received by the active helping
         if (!usingCredits) {
             if (combo.activeHelping.exists) {
                 if (creatorOnly) revert CreatorOnlyUnsuccessful();
                 ++combo.activeHelping.depositsReceived;
-                removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit); // Transferring the reward may cause the active double helping to expire.
+                // Awarding the deposit may have caused the active double helping to expire.
+                removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit); 
             } else {
                 // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
                 // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
