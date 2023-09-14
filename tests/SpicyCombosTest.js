@@ -130,7 +130,6 @@ describe('deploy SpicyCombos contract', function () {
             expect(activeHelpingOwner).to.equal(owner.address)
         })
         it('our helping should have the creator bonus (1 deposit)', async function () {
-            const [owner] = signers
             const { 5: activeHelpingDeposits } = await sc.comboInfo(
                 amountDigit1,
                 amountDigit2,
@@ -255,7 +254,6 @@ describe('deploy SpicyCombos contract', function () {
                 expect(activeHelpingDeposits).to.equal(0)
             })
             it('the queue length should still be zero', async function () {
-                const [, account2] = signers
                 const { 0: queueLength } = await sc.comboInfo(
                     amountDigit1,
                     amountDigit2,
