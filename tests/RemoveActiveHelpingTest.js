@@ -24,7 +24,7 @@ describe('deploy SpicyCombos contract', function () {
 
         // adjust the block time limit to experiment with timed helpings
         const blocksDigit1 = 2
-        const blocksDigit2 = 0
+        const blocksDigit2 = 5
         const blocksZeros = 0
 
         var comboPrice
@@ -60,14 +60,7 @@ describe('deploy SpicyCombos contract', function () {
                 const [owner] = signers
                 await sc
                     .connect(owner)
-                    .removeHelping(
-                        amountDigit1,
-                        amountDigit2,
-                        amountZeros,
-                        blocksDigit1,
-                        blocksDigit2,
-                        blocksZeros,
-                    )
+                    .removeHelping(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
             })
             it('should return the deposit', async function () {
                 const [owner] = signers
@@ -134,12 +127,12 @@ describe('deploy SpicyCombos contract', function () {
             })
             describe('removeHelping() removing an expired timed helping with one deposit received', async function () {
                 before(async function () {
-                    const [, account2, account3] = signers
-                    const doubleHelping = true
+                    const [owner, , account3, account4] = signers
+                    const timedHelping = false
                     const usingCredits = false
                     const creatorOnly = false
                     await sc
-                        .connect(account2)
+                        .connect(account4)
                         .addHelping(
                             amountDigit1,
                             amountDigit2,
@@ -147,27 +140,89 @@ describe('deploy SpicyCombos contract', function () {
                             blocksDigit1,
                             blocksDigit2,
                             blocksZeros,
-                            doubleHelping,
+                            timedHelping,
                             usingCredits,
                             creatorOnly,
                             premium(0),
                             { value: comboPrice.add(premium(0)) }
                         )
+                    // deposit a bunch of times to make more blocks pass
+                    const numTransactionsToWaste = 80;
+                    for (let i = 0; i < numTransactionsToWaste; ++i) {
+                        await sc.connect(owner).deposit({ value: premium(.001) })
+                    }
+                    // needs to have expired. play with the block time in the combo definition
                     await sc
                         .connect(account3)
-                        .removeHelping(
-                            amountDigit1,
-                            amountDigit2,
-                            amountZeros,
-                            blocksDigit1,
-                            blocksDigit2,
-                            blocksZeros,
-                        )
+                        .removeHelping(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
                 })
                 it('should result in getting your deposit back', async function () {
                     const [, , account3] = signers
                     const { 0: availableDeposits } = await sc.balances(account3.address)
                     expect(availableDeposits).to.equal(comboPrice)
+                })
+                it('the helping that made the deposit should be the active helping now', async function () {
+                    const account4 = signers[3]
+                    const { 3: activeHelpingOwner } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    )
+                    expect(activeHelpingOwner).to.equal(account4.address)
+                })
+            })
+            describe('removeHelping() removing an expired timed helping with three deposits received', async function () {
+                before(async function () {
+                    const [owner,,,account4] = signers
+                    const timedHelping = true
+                    const usingCredits = false
+                    const creatorOnly = false
+                    for (let i = 0; i < 3; ++i) {
+                        await sc
+                            .connect(signers[i + 4])
+                            .addHelping(
+                                amountDigit1,
+                                amountDigit2,
+                                amountZeros,
+                                blocksDigit1,
+                                blocksDigit2,
+                                blocksZeros,
+                                timedHelping,
+                                usingCredits,
+                                creatorOnly,
+                                premium(0),
+                                { value: comboPrice.add(premium(0)) }
+                            )
+                    }
+                    // deposit a bunch of times to make more blocks pass
+                    const numTransactionsToWaste = 80;
+                    for (let i = 0; i < numTransactionsToWaste; ++i) {
+                        await sc.connect(owner).deposit({ value: premium(.001) })
+                    }
+                    // needs to have expired. play with the block time in the combo definition
+                    await sc
+                        .connect(account4)
+                        .removeHelping(amountDigit1, amountDigit2, amountZeros, blocksDigit1, blocksDigit2, blocksZeros)
+                })
+                it('should result in deposit back plus 90% of the next two deposits', async function () {
+                    const account4 = signers[3]
+                    const { 0: availableDeposits } = await sc.balances(account4.address)
+                    expect(availableDeposits).to.equal(comboPrice.add(comboPrice.mul(2 * 9).div(10)))
+                })
+                it('next active helping should be the first one added to the queue', async function () {
+                    const account5 = signers[4]
+                    const { 3: activeHelpingOwner } = await sc.comboInfo(
+                        amountDigit1,
+                        amountDigit2,
+                        amountZeros,
+                        blocksDigit1,
+                        blocksDigit2,
+                        blocksZeros
+                    )
+                    expect(activeHelpingOwner).to.equal(account5.address)
                 })
             })
         })
