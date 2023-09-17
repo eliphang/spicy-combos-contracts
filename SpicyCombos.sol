@@ -45,12 +45,13 @@ contract SpicyCombos is Ownable {
         uint256 indexed comboId,
         address indexed owner,
         address indexed depositRecipient,
-        uint depositAmount,
+        uint256 depositAmount,
         bool usingCredits,
         bool doubleHelping,
-        uint256 premium
+        uint256 premium,
+        bool createdCombo
     );
-    event HelpingRemoved(uint256 indexed comboId, address indexed owner);
+    event HelpingRemoved(uint256 indexed comboId, address indexed owner, bool removedCombo);
     event PremiumIncreased(uint256 indexed comboId, address indexed owner, uint256 newPremium);
     event NewActiveHelping(uint256 indexed comboId, address indexed owner);
 
@@ -206,6 +207,7 @@ contract SpicyCombos is Ownable {
         });
 
         address depositRecipient;
+        bool createdCombo;
 
         // Calculate deposits received by the active helping
         if (!usingCredits) {
@@ -219,6 +221,7 @@ contract SpicyCombos is Ownable {
                 // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
                 // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
                 helping.depositsReceived = 1;
+                createdCombo = true;
             }
         }
 
@@ -232,7 +235,16 @@ contract SpicyCombos is Ownable {
             emit NewActiveHelping(comboId, msg.sender);
         }
 
-        emit HelpingAdded(comboId, msg.sender, depositRecipient, depositAmount, usingCredits, doubleHelping, premium);
+        emit HelpingAdded(
+            comboId,
+            msg.sender,
+            depositRecipient,
+            depositAmount,
+            usingCredits,
+            doubleHelping,
+            premium,
+            createdCombo
+        );
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
@@ -360,7 +372,7 @@ contract SpicyCombos is Ownable {
             }
         }
 
-        emit HelpingRemoved(comboId, msg.sender);
+        emit HelpingRemoved(comboId, msg.sender, !combo.activeHelping.exists);
     }
 
     /// Get info about a combo identified by the amount and blocks.
@@ -552,7 +564,7 @@ contract SpicyCombos is Ownable {
             combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.
         } else delete combo.activeHelping;
 
-        emit HelpingRemoved(comboId, owner);
+        emit HelpingRemoved(comboId, owner, !combo.activeHelping.exists);
     }
 
     function isActiveHelpingExpired(uint256 comboId) internal view returns (bool) {
