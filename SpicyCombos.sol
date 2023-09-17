@@ -50,6 +50,7 @@ contract SpicyCombos is Ownable {
     );
     event HelpingRemoved(uint256 indexed comboId, address indexed owner);
     event PremiumIncreased(uint256 indexed comboId, address indexed owner, uint256 newPremium);
+    event NewActiveHelping(uint256 indexed comboId, address indexed owner);
 
     error ValueOutOfRange(string parameter, uint256 allowedMinimum, uint256 allowedMaximum);
     error NotEnoughAvailableCredits(uint256 availableCredits, uint256 comboPrice);
@@ -220,6 +221,7 @@ contract SpicyCombos is Ownable {
             PriQueue.insert(combo.queue, entry);
         } else {
             combo.activeHelping = helping;
+            emit NewActiveHelping(comboId, msg.sender);
         }
 
         emit HelpingAdded(comboId, msg.sender, usingCredits, doubleHelping, premium);
@@ -538,6 +540,7 @@ contract SpicyCombos is Ownable {
         if (PriQueue.length(combo.queue) != 0) {
             QueueEntry memory first = PriQueue.removeFirst(combo.queue);
             combo.activeHelping = combo.helpings[first.addr];
+            emit NewActiveHelping(comboId, first.addr);
             combo.activeHelping.expiration = block.number + timeLimit; // When a helping becomes the active one, start the timer.
         } else delete combo.activeHelping;
 
