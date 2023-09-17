@@ -45,6 +45,7 @@ contract SpicyCombos is Ownable {
         uint256 indexed comboId,
         address indexed owner,
         address indexed depositRecipient,
+        uint depositAmount,
         bool usingCredits,
         bool doubleHelping,
         uint256 premium
@@ -170,6 +171,8 @@ contract SpicyCombos is Ownable {
 
         devFund += premium;
 
+        uint256 depositAmount;
+
         if (usingCredits) {
             if (creatorOnly) {
                 revert CreatorOnlyIncompatibleWithUseCredits();
@@ -186,6 +189,7 @@ contract SpicyCombos is Ownable {
             }
             balance.availableDeposits -= comboPrice;
             balance.depositsInUse += comboPrice;
+            depositAmount = comboPrice;
         }
 
         // Update queue.
@@ -229,7 +233,7 @@ contract SpicyCombos is Ownable {
             emit NewActiveHelping(comboId, msg.sender);
         }
 
-        emit HelpingAdded(comboId, msg.sender, depositRecipient, usingCredits, doubleHelping, premium);
+        emit HelpingAdded(comboId, msg.sender, depositRecipient, depositAmount, usingCredits, doubleHelping, premium);
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
