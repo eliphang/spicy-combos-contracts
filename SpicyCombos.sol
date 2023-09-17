@@ -44,7 +44,8 @@ contract SpicyCombos is Ownable {
     event HelpingAdded(
         uint256 indexed comboId,
         address indexed owner,
-        bool indexed usingCredits,
+        address indexed depositRecipient,
+        bool usingCredits,
         bool doubleHelping,
         uint256 premium
     );
@@ -200,17 +201,21 @@ contract SpicyCombos is Ownable {
             exists: true
         });
 
+        address depositRecipient;
+
         // Calculate deposits received by the active helping
         if (!usingCredits) {
             if (combo.activeHelping.exists) {
                 if (creatorOnly) revert CreatorOnlyUnsuccessful();
                 ++combo.activeHelping.depositsReceived;
+                depositRecipient = combo.activeHelping.owner;
                 // Awarding the deposit may have caused the active double helping to expire.
                 removeActiveHelpingIfExpired(comboId, comboPrice, timeLimit);
             } else {
                 // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
                 // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
                 helping.depositsReceived = 1;
+                depositRecipient = msg.sender;
             }
         }
 
@@ -224,7 +229,7 @@ contract SpicyCombos is Ownable {
             emit NewActiveHelping(comboId, msg.sender);
         }
 
-        emit HelpingAdded(comboId, msg.sender, usingCredits, doubleHelping, premium);
+        emit HelpingAdded(comboId, msg.sender, depositRecipient, usingCredits, doubleHelping, premium);
     }
 
     /// Increase the premium of your helping in the queue for the combo uniquely identified by the amount and blocks.
