@@ -219,7 +219,6 @@ contract SpicyCombos is Ownable {
                 // deposits received while this was the active helping. Start this at 1 to enable the creator bonus.
                 // See https://github.com/eliphang/spicy-combos/blob/main/README.md#creator-bonus .
                 helping.depositsReceived = 1;
-                depositRecipient = msg.sender;
             }
         }
 
