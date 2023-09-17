@@ -369,10 +369,9 @@ contract SpicyCombos is Ownable {
                     balance.depositsInUse -= comboPrice;
                 }
                 delete combo.helpings[msg.sender];
+                emit HelpingRemoved(comboId, msg.sender, false);
             }
         }
-
-        emit HelpingRemoved(comboId, msg.sender, !combo.activeHelping.exists);
     }
 
     /// Get info about a combo identified by the amount and blocks.
