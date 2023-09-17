@@ -51,7 +51,7 @@ contract SpicyCombos is Ownable {
         uint256 premium,
         bool createdCombo
     );
-    event HelpingRemoved(uint256 indexed comboId, address indexed owner, bool removedCombo);
+    event HelpingRemoved(uint256 indexed comboId, address indexed owner, bool indexed removedCombo);
     event PremiumIncreased(uint256 indexed comboId, address indexed owner, uint256 newPremium);
     event NewActiveHelping(uint256 indexed comboId, address indexed owner);
 
